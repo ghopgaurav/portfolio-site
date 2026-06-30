@@ -1,18 +1,20 @@
 /* ============================================================
    Gaurav Ghop — Studio Portfolio
-   Aesthetic: warm near-black canvas, bone-white ink, editorial
+   Aesthetic: Dune — deep desert night, sand/parchment ink,
+   spice amber + terracotta, a restrained Fremen blue.
    ============================================================ */
 
 :root {
-  --bg: #0c0b09;
-  --bg-2: #110f0c;
-  --ink: #ece6d8;
-  --ink-dim: #a39c8c;
-  --ink-faint: #6f685b;
-  --line: rgba(236, 230, 216, 0.12);
-  --accent: #c8ff4d;
-  --accent-2: #ff6b4a;
-  --accent-3: #9db4ff;
+  --bg: #120c07;
+  --bg-2: #1a1109;
+  --ink: #ece0c8;
+  --ink-dim: #b8a684;
+  --ink-faint: #80715a;
+  --line: rgba(236, 224, 200, 0.12);
+  --accent: #e3963f;        /* spice amber */
+  --accent-2: #c2542e;      /* terracotta / rust */
+  --accent-3: #6f93a3;      /* Fremen spice-blue (used sparingly) */
+  --accent-rgb: 227, 150, 63;
   --maxw: 1280px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --pad: clamp(20px, 5vw, 64px);
@@ -249,9 +251,9 @@ img { display: block; max-width: 100%; }
   width: fit-content;
 }
 .hero__hello-big {
-  font-size: clamp(2.6rem, 9vw, 7rem);
-  line-height: 0.9;
-  background: linear-gradient(100deg, var(--ink), var(--accent-3) 60%, var(--accent));
+  font-size: clamp(1.4rem, 3.2vw, 2.4rem);
+  line-height: 1;
+  background: linear-gradient(100deg, var(--ink), var(--accent) 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -259,7 +261,7 @@ img { display: block; max-width: 100%; }
 }
 .hero__hello:hover .hero__hello-big { letter-spacing: 0.01em; }
 .hero__hello-arrow {
-  font-size: clamp(1.6rem, 4vw, 3rem);
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
   color: var(--accent);
   transition: transform 0.4s var(--ease);
 }
@@ -281,9 +283,9 @@ img { display: block; max-width: 100%; }
   box-shadow: 0 0 0 0 var(--accent); animation: ring 2.2s infinite;
 }
 @keyframes ring {
-  0% { box-shadow: 0 0 0 0 rgba(54,241,205,0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(54,241,205,0); }
-  100% { box-shadow: 0 0 0 0 rgba(54,241,205,0); }
+  0% { box-shadow: 0 0 0 0 rgba(227,150,63,0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(227,150,63,0); }
+  100% { box-shadow: 0 0 0 0 rgba(227,150,63,0); }
 }
 
 /* Main: text + orb */
@@ -294,6 +296,14 @@ img { display: block; max-width: 100%; }
   gap: clamp(24px, 4vw, 56px);
 }
 .hero__text { min-width: 0; }
+.hero__role {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
 .hero__title { margin: 0; }
 .hero__line { display: block; overflow: hidden; }
 .hero__title .word { display: inline-block; }
@@ -421,7 +431,7 @@ img { display: block; max-width: 100%; }
   position: absolute; inset: 0;
   border-radius: 14px;
   background:
-    radial-gradient(120% 140% at 0% 50%, rgba(124,92,255,0.10), transparent 55%),
+    radial-gradient(120% 140% at 0% 50%, rgba(227,150,63,0.10), transparent 55%),
     rgba(236, 230, 216, 0.025);
   opacity: 0;
   transition: opacity 0.5s var(--ease);
@@ -484,7 +494,7 @@ img { display: block; max-width: 100%; }
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(200,255,77,0.12), transparent 60%);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(227,150,63,0.13), transparent 60%);
   opacity: 0;
   transition: opacity 0.4s var(--ease);
   pointer-events: none;
@@ -650,7 +660,7 @@ img { display: block; max-width: 100%; }
   background: rgba(14, 13, 11, 0.82);
   backdrop-filter: blur(16px);
   border: 1px solid var(--line);
-  box-shadow: 0 24px 60px -24px rgba(0,0,0,0.8), 0 0 0 1px rgba(124,92,255,0.12) inset;
+  box-shadow: 0 24px 60px -24px rgba(0,0,0,0.8), 0 0 0 1px rgba(227,150,63,0.14) inset;
 }
 .sound-prompt__wave { display: flex; align-items: flex-end; gap: 3px; height: 26px; flex-shrink: 0; }
 .sound-prompt__wave i { width: 3px; background: linear-gradient(var(--accent), var(--accent-3)); border-radius: 3px; animation: eq 1s ease-in-out infinite; }

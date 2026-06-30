@@ -1,22 +1,35 @@
 /**
- * Tiny generative synth built on the Web Audio API — no audio assets.
- * Plays soft, bell-like notes from a pentatonic scale through a low-pass
- * filter and a feedback delay for a futuristic shimmer. Everything is
- * wrapped in try/catch so audio can never break the page.
+ * Granular "sand" audio on the Web Audio API — no audio assets.
+ * - A continuous filtered-noise bed whose level/brightness maps to how much
+ *   the sand is being disturbed (setSandLevel).
+ * - Short grain bursts for discrete hovers/ticks (sandBurst).
+ * Everything is wrapped in try/catch so audio can never break the page.
  */
 
 let ctx = null;
 let master = null;
-let delay = null;
-let feedback = null;
+let noiseBuffer = null;
+let bedSrc = null;
+let bedFilter = null;
+let bedGain = null;
 let enabled = false;
-let lastNoteAt = 0;
+let lastBurst = 0;
 
-// C minor pentatonic across two octaves — moody but pretty / "cyberpunk".
-const SCALE = [
-  207.65, 246.94, 277.18, 311.13, 369.99, // G3 B3 C#4 D#4 F#4-ish set
-  415.3, 493.88, 554.37, 622.25, 739.99,
-];
+const BED_MAX = 0.16;
+
+function makeNoise(c) {
+  const len = Math.floor(c.sampleRate * 2);
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    // slightly brown-ish noise: smoother, more "sandy" than pure white
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last * 3.0 + white * 0.4;
+  }
+  return buf;
+}
 
 function ensureContext() {
   if (ctx) return ctx;
@@ -29,21 +42,26 @@ function ensureContext() {
     master.gain.value = 0.0;
     master.connect(ctx.destination);
 
-    // Shimmer: short feedback delay
-    delay = ctx.createDelay(1.0);
-    delay.delayTime.value = 0.28;
-    feedback = ctx.createGain();
-    feedback.gain.value = 0.32;
-    const wet = ctx.createGain();
-    wet.gain.value = 0.5;
+    noiseBuffer = makeNoise(ctx);
 
-    delay.connect(feedback);
-    feedback.connect(delay);
-    delay.connect(wet);
-    wet.connect(master);
+    // Continuous sand bed
+    bedSrc = ctx.createBufferSource();
+    bedSrc.buffer = noiseBuffer;
+    bedSrc.loop = true;
 
-    // expose the delay send on the module scope
-    ensureContext._wet = delay;
+    bedFilter = ctx.createBiquadFilter();
+    bedFilter.type = "bandpass";
+    bedFilter.frequency.value = 900;
+    bedFilter.Q.value = 0.6;
+
+    bedGain = ctx.createGain();
+    bedGain.gain.value = 0.0;
+
+    bedSrc.connect(bedFilter);
+    bedFilter.connect(bedGain);
+    bedGain.connect(master);
+    bedSrc.start(0);
+
     return ctx;
   } catch (e) {
     console.warn("[audio] context init failed", e);
@@ -61,13 +79,17 @@ export async function enableAudio() {
   try {
     if (c.state === "suspended") await c.resume();
     enabled = true;
-    // fade master in
     const now = c.currentTime;
     master.gain.cancelScheduledValues(now);
     master.gain.setValueAtTime(master.gain.value, now);
-    master.gain.linearRampToValueAtTime(0.22, now + 0.4);
-    // welcome arpeggio
-    [0, 2, 4, 6].forEach((i, k) => setTimeout(() => playNote(SCALE[i + 2]), k * 110));
+    master.gain.linearRampToValueAtTime(1.0, now + 0.4);
+
+    // welcome: a soft sand swell
+    bedGain.gain.cancelScheduledValues(now);
+    bedGain.gain.setValueAtTime(0.0001, now);
+    bedGain.gain.linearRampToValueAtTime(BED_MAX, now + 0.5);
+    bedGain.gain.linearRampToValueAtTime(0.0, now + 1.6);
+    sandBurst(0.6);
     return true;
   } catch (e) {
     console.warn("[audio] enable failed", e);
@@ -85,53 +107,52 @@ export function disableAudio() {
   }
 }
 
-/** Play a single soft note. freq optional — defaults to a random scale tone. */
-export function playNote(freq) {
-  if (!enabled || !ctx) return;
-  // light throttle so rapid hovers don't machine-gun
-  const t = ctx.currentTime;
-  if (t - lastNoteAt < 0.04) return;
-  lastNoteAt = t;
-
+/** Continuous disturbance level, 0..1 — drives the sand bed loudness/brightness. */
+export function setSandLevel(level) {
+  if (!enabled || !ctx || !bedGain) return;
   try {
-    const f = freq || SCALE[Math.floor(Math.random() * SCALE.length)];
-
-    const osc = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const g = ctx.createGain();
-    const lp = ctx.createBiquadFilter();
-
-    osc.type = "triangle";
-    osc2.type = "sine";
-    osc.frequency.value = f;
-    osc2.frequency.value = f * 2.0; // octave shimmer
-    osc2.detune.value = 4;
-
-    lp.type = "lowpass";
-    lp.frequency.value = 2600;
-    lp.Q.value = 0.7;
-
-    const peak = 0.5;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
-
-    osc.connect(g);
-    osc2.connect(g);
-    g.connect(master);
-    if (ensureContext._wet) g.connect(ensureContext._wet);
-
-    osc.start(t);
-    osc2.start(t);
-    osc.stop(t + 0.95);
-    osc2.stop(t + 0.95);
+    const v = Math.max(0, Math.min(1, level));
+    const now = ctx.currentTime;
+    const target = v * v * BED_MAX;
+    bedGain.gain.setTargetAtTime(target, now, 0.08);
+    bedFilter.frequency.setTargetAtTime(700 + v * 2600, now, 0.1);
   } catch (e) {
-    // never let sound crash the UI
+    /* noop */
   }
 }
 
-/** Map a 0..1 value to a scale note (handy for positional hover pitch). */
-export function noteFromUnit(u) {
-  const i = Math.max(0, Math.min(SCALE.length - 1, Math.round(u * (SCALE.length - 1))));
-  return SCALE[i];
+/** A single grain burst — for hovers/ticks. intensity 0..1. */
+export function sandBurst(intensity = 0.5) {
+  if (!enabled || !ctx) return;
+  const t = ctx.currentTime;
+  if (t - lastBurst < 0.03) return;
+  lastBurst = t;
+  try {
+    const i = Math.max(0.1, Math.min(1, intensity));
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    src.loop = true;
+    // start at a random offset for variation
+    const offset = Math.random() * 1.5;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 1600 + Math.random() * 2600;
+    bp.Q.value = 0.9;
+
+    const g = ctx.createGain();
+    const peak = 0.09 * i;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16 + i * 0.12);
+
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(master);
+
+    src.start(t, offset);
+    src.stop(t + 0.4);
+  } catch (e) {
+    /* never let sound crash the UI */
+  }
 }

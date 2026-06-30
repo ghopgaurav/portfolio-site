@@ -1,5 +1,5 @@
 import { createContext, useContext, useCallback, useEffect, useState } from "react";
-import { enableAudio, disableAudio, playNote, isEnabled } from "../lib/audio.js";
+import { enableAudio, disableAudio, sandBurst, isEnabled } from "../lib/audio.js";
 
 const SoundCtx = createContext({ on: false, toggle: () => {}, note: () => {} });
 export const useSound = () => useContext(SoundCtx);
@@ -52,14 +52,14 @@ export default function SoundProvider({ children }) {
     }
   }, [on]);
 
-  const note = useCallback((freq) => playNote(freq), []);
+  const note = useCallback((intensity) => sandBurst(intensity), []);
 
-  // Global hover → soft note on interactive targets
+  // Global hover → soft grain on interactive targets
   useEffect(() => {
     if (!on) return;
     const onOver = (e) => {
       const t = e.target.closest("a, button, [data-sound]");
-      if (t) playNote();
+      if (t) sandBurst(0.4);
     };
     document.addEventListener("mouseover", onOver);
     return () => document.removeEventListener("mouseover", onOver);
@@ -76,7 +76,7 @@ export default function SoundProvider({ children }) {
             </span>
             <div className="sound-prompt__text">
               <strong>Sound on?</strong>
-              <span>This portfolio plays generative notes as you explore.</span>
+              <span>Disturb the sand and you'll hear it shift. Best with sound.</span>
             </div>
             <div className="sound-prompt__actions">
               <button className="sp-btn sp-btn--accent" onClick={accept} data-cursor>Enable sound</button>

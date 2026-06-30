@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { SplitWords } from "../Reveal.jsx";
 import Magnetic from "../Magnetic.jsx";
 import ErrorBoundary from "../ErrorBoundary.jsx";
-import HeroOrb from "../HeroOrb.jsx";
+import SandField from "../SandField.jsx";
 import { profile } from "../../data/content.js";
 
 const clients = ["Lockheed Martin", "US Navy", "Tiny Archives", "Duende"];
@@ -34,17 +34,21 @@ export default function Hero({ start }) {
 
       <div className="hero__main">
         <div className="hero__text">
+          <motion.span className="hero__role mono" {...fade(0.05)}>
+            {profile.role}
+          </motion.span>
           <h1 className="hero__title display">
             {start && (
               <>
-                <span className="hero__line"><SplitWords text="Reliable systems," delay={0.1} /></span>
+                <span className="hero__line"><SplitWords text="Software that" delay={0.1} /></span>
                 <span className="hero__line">
+                  <SplitWords text="survives" delay={0.24} />{" "}
                   <motion.em
                     initial={{ y: "110%", opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    applied&nbsp;AI.
+                    the&nbsp;storm.
                   </motion.em>
                 </span>
               </>
@@ -72,12 +76,12 @@ export default function Hero({ start }) {
         {/* Interactive WebGL element — isolated so it can never crash the page */}
         <motion.div
           className="hero__orb-wrap"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: start ? 1 : 0, scale: start ? 1 : 0.9 }}
-          transition={{ duration: 1.1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: start ? 1 : 0, scale: start ? 1 : 0.96 }}
+          transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          <ErrorBoundary name="HeroOrb">
-            <HeroOrb />
+          <ErrorBoundary name="SandField">
+            <SandField />
           </ErrorBoundary>
         </motion.div>
       </div>

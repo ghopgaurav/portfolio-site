@@ -66,16 +66,16 @@ const fragment = /* glsl */ `
     float n2 = fbm(q * 1.8 - vec2(t * 0.7, t));
     float field = n1 * 0.6 + n2 * 0.4;
 
-    // studio palette
-    vec3 bg   = vec3(0.047, 0.043, 0.035);
-    vec3 lime = vec3(0.784, 1.0, 0.30);
-    vec3 blue = vec3(0.616, 0.706, 1.0);
-    vec3 rust = vec3(1.0, 0.42, 0.29);
+    // dune palette
+    vec3 bg    = vec3(0.071, 0.047, 0.027);   // deep desert night
+    vec3 sand  = vec3(0.776, 0.588, 0.318);   // lit sand
+    vec3 spice = vec3(0.890, 0.588, 0.247);   // spice amber
+    vec3 fremen= vec3(0.435, 0.576, 0.639);   // muted spice-blue
 
     vec3 col = bg;
-    col = mix(col, blue, smoothstep(0.05, 0.55, field) * 0.16);
-    col = mix(col, lime, smoothstep(0.35, 0.85, n1) * 0.12);
-    col = mix(col, rust, smoothstep(0.45, 0.95, n2) * 0.07);
+    col = mix(col, sand, smoothstep(0.05, 0.6, field) * 0.18);
+    col = mix(col, spice, smoothstep(0.35, 0.9, n1) * 0.13);
+    col = mix(col, fremen, smoothstep(0.5, 0.97, n2) * 0.05);
 
     // soft vignette
     float vig = smoothstep(1.25, 0.2, length(p));

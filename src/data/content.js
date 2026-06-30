@@ -1,6 +1,7 @@
 export const profile = {
   name: "Gaurav Ghop",
   roles: ["Software Engineer", "Applied AI", "Distributed Systems"],
+  role: "Software Engineer · Backend & Applied AI",
   location: "New York, NY",
   email: "gauravghopwork@gmail.com",
   phone: "+1 929-628-4065",
@@ -8,7 +9,7 @@ export const profile = {
   linkedin: "https://www.linkedin.com/in/gauravghop",
   available: "Open to SWE / AI roles across the US",
   intro:
-    "I'm a software engineer in New York and just finished my M.S. in Computer Engineering at NYU. I build backends that stay correct when traffic spikes or something upstream falls over, plus the AI tooling that runs on top of them.",
+    "I'm Gaurav — a software engineer in New York, fresh out of NYU. I build event-driven backends and the AI layer that runs on top of them. Recently I cut LLM inference costs 34% with a confidence-based model router, and wrote an LSM key-value store that holds 80K ops/sec.",
 };
 
 export const stats = [

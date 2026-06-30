@@ -55,8 +55,9 @@ src/
 
 - **Content:** edit `src/data/content.js` (experience, projects, skills, stats, links).
 - **Real links:** replace the placeholder `https://github.com` / `https://linkedin.com` and project `link: "#"` values.
-- **Colors / vibe:** tweak the CSS variables under `:root` in `src/index.css` (`--accent`, `--bg`, `--ink`).
-- **Shader palette:** edit the `lime` / `blue` / `rust` colors in `ShaderBackground.jsx`.
+- **Colors / vibe:** tweak the CSS variables under `:root` in `src/index.css` (`--accent`, `--bg`, `--ink`) — currently a Dune desert palette.
+- **Shader palette:** edit the `sand` / `spice` / `fremen` colors in `ShaderBackground.jsx`.
+- **Sand interaction:** tune grain count / physics in `SandField.jsx` (`GRID`, `RADIUS`, `PUSH`, `SPRING`, `DAMP`); sand audio lives in `lib/audio.js`.
 
 ## Robustness — features can't take the site down
 
