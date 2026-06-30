@@ -8,7 +8,7 @@ export const profile = {
   linkedin: "https://www.linkedin.com/in/gauravghop",
   available: "Open to 2026 grad roles — backend & AI engineering",
   intro:
-    "I build the unglamorous parts of systems — retries, idempotency, dead-letter queues, reconciliation — and the applied-AI layer on top that actually ships.",
+    "I'm a backend engineer in New York, finishing a master's at NYU. I build systems that have to stay correct when traffic spikes or something upstream goes down, plus the AI tooling that runs on top of them.",
 };
 
 export const stats = [

@@ -51,19 +51,21 @@ export default function About() {
           <div>
             <Reveal>
               <p className="about__lead">
-                I like the unglamorous parts of systems — retries, idempotency,
-                dead-letter queues, reconciliation — <span>the plumbing that keeps
-                things from silently breaking.</span>
+                The parts of a system nobody notices are the ones I like best:
+                the retry that quietly saves an order, the idempotency check that
+                stops a double charge, <span>the queue that holds onto a message
+                instead of losing it.</span>
               </p>
             </Reveal>
             <Reveal delay={0.1}>
               <p className="about__body">
-                Across an early-stage AI startup, a logistics company, and an
-                enterprise integration platform, I've shipped backends that stay
-                correct under load and outages. Lately I've gone deep on applied
-                AI: confidence-based model routing, local/edge fine-tuning, and
-                tool-using agents with guardrails that ground every action in real
-                data. I care about cost, latency, and not hallucinating.
+                I've built backends for an enterprise integration platform, a
+                delivery startup, and an AI company. Most of it is the kind of work
+                that only gets noticed when it breaks, so I spend my time making
+                sure it doesn't. Lately I've been on the AI side too: routing the
+                simpler requests to cheaper models, fine-tuning ones small enough
+                to run on a laptop, and getting agents to back up what they say with
+                a real source instead of guessing.
               </p>
             </Reveal>
           </div>
