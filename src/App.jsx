@@ -55,7 +55,7 @@ export default function App() {
 
           <footer className="footer container">
             <span>© {new Date().getFullYear()} {profile.name}</span>
-            <span>New York, NY — Available worldwide</span>
+            <span>Based in New York · open across the US</span>
             <span>Built with React · Three.js · Framer Motion</span>
           </footer>
         </main>

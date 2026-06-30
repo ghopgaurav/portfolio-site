@@ -28,7 +28,7 @@ export default function Hero({ start }) {
           <span className="sep">/</span>
           <span>{profile.location}</span>
           <span className="sep">/</span>
-          <span className="hero__avail-inline"><span className="pulse" /> available</span>
+          <span className="hero__avail-inline"><span className="pulse" /> {profile.available}</span>
         </motion.div>
       </div>
 

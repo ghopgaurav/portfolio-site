@@ -6,7 +6,7 @@ export const profile = {
   phone: "+1 929-628-4065",
   github: "https://github.com/ghopgaurav",
   linkedin: "https://www.linkedin.com/in/gauravghop",
-  available: "Open to SWE / AI engineering roles",
+  available: "Open to SWE / AI roles across the US",
   intro:
     "I'm a software engineer in New York and just finished my M.S. in Computer Engineering at NYU. I build backends that stay correct when traffic spikes or something upstream falls over, plus the AI tooling that runs on top of them.",
 };
