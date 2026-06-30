@@ -6,6 +6,8 @@ import SmoothScroll from "./components/SmoothScroll.jsx";
 import ShaderBackground from "./components/ShaderBackground.jsx";
 import Loader from "./components/Loader.jsx";
 import Nav from "./components/Nav.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import SoundProvider from "./components/SoundProvider.jsx";
 
 import Hero from "./components/sections/Hero.jsx";
 import About from "./components/sections/About.jsx";
@@ -16,13 +18,24 @@ import Closing from "./components/sections/Closing.jsx";
 import Contact from "./components/sections/Contact.jsx";
 import { profile } from "./data/content.js";
 
+/** Each section is wrapped so a failure in one never blanks the whole site. */
+function Section({ name, children }) {
+  return <ErrorBoundary name={name}>{children}</ErrorBoundary>;
+}
+
 export default function App() {
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <>
-      <Cursor />
-      <ShaderBackground />
+    <SoundProvider>
+      <ErrorBoundary name="Cursor">
+        <Cursor />
+      </ErrorBoundary>
+
+      <ErrorBoundary name="ShaderBackground">
+        <ShaderBackground />
+      </ErrorBoundary>
+
       <div className="grain" aria-hidden="true" />
 
       <AnimatePresence>
@@ -32,13 +45,13 @@ export default function App() {
       <SmoothScroll>
         <Nav />
         <main className="content">
-          <Hero start={loaded} />
-          <About />
-          <Work />
-          <Projects />
-          <Skills />
-          <Closing />
-          <Contact />
+          <Section name="Hero"><Hero start={loaded} /></Section>
+          <Section name="About"><About /></Section>
+          <Section name="Work"><Work /></Section>
+          <Section name="Projects"><Projects /></Section>
+          <Section name="Skills"><Skills /></Section>
+          <Section name="Closing"><Closing /></Section>
+          <Section name="Contact"><Contact /></Section>
 
           <footer className="footer container">
             <span>© {new Date().getFullYear()} {profile.name}</span>
@@ -47,6 +60,6 @@ export default function App() {
           </footer>
         </main>
       </SmoothScroll>
-    </>
+    </SoundProvider>
   );
 }
