@@ -6,9 +6,9 @@ export const profile = {
   phone: "+1 929-628-4065",
   github: "https://github.com/ghopgaurav",
   linkedin: "https://www.linkedin.com/in/gauravghop",
-  available: "Open to 2026 grad roles — backend & AI engineering",
+  available: "Open to SWE / AI engineering roles",
   intro:
-    "I'm a backend engineer in New York, finishing a master's at NYU. I build systems that have to stay correct when traffic spikes or something upstream goes down, plus the AI tooling that runs on top of them.",
+    "I'm a software engineer in New York and just finished my M.S. in Computer Engineering at NYU. I build backends that stay correct when traffic spikes or something upstream falls over, plus the AI tooling that runs on top of them.",
 };
 
 export const stats = [
@@ -164,22 +164,26 @@ export const education = [
     school: "New York University",
     degree: "M.S. Computer Engineering",
     location: "New York, NY",
-    period: "Sept 2024 — May 2026",
+    period: "2024 — 2026",
+    status: "Graduated May 2026",
     note: "Design & Analysis of Algorithms · High-Performance ML · Distributed Systems",
+    highlight: true,
   },
   {
     school: "Vishwakarma Institute of Information Technology",
-    degree: "B.Tech. Electronics & Telecom Engineering",
+    degree: "B.Tech. Electronics & Telecommunications",
     location: "Pune, India",
-    period: "Aug 2017 — May 2021",
+    period: "2017 — 2021",
+    status: "",
     note: "",
+    highlight: false,
   },
 ];
 
 export const achievements = [
-  "Merit-based Scholarship for Graduate Tuition — NYU",
-  "Runner-Up — AWS GenAI Hackathon 2025",
-  "Runner-Up — Smart India Hackathon 2020",
-  "Finalist — Google DeepMind Hackathon 2025",
-  "ACM ICPC Regionals (2019) · Google KickStart Round B (2020) · CodeChef 4★",
+  { tag: "Scholarship", text: "Merit-based Graduate Tuition Scholarship", org: "NYU" },
+  { tag: "Runner-Up", text: "AWS GenAI Hackathon", org: "2025" },
+  { tag: "Finalist", text: "Google DeepMind Hackathon", org: "2025" },
+  { tag: "Runner-Up", text: "Smart India Hackathon", org: "2020" },
+  { tag: "Competitive", text: "ACM ICPC Regionals · Google KickStart · CodeChef 4★", org: "" },
 ];
