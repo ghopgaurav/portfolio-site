@@ -73,13 +73,13 @@ const fragment = /* glsl */ `
     vec3 fremen= vec3(0.435, 0.576, 0.639);   // muted spice-blue
 
     vec3 col = bg;
-    col = mix(col, sand, smoothstep(0.05, 0.6, field) * 0.18);
-    col = mix(col, spice, smoothstep(0.35, 0.9, n1) * 0.13);
-    col = mix(col, fremen, smoothstep(0.5, 0.97, n2) * 0.05);
+    col = mix(col, sand, smoothstep(0.05, 0.62, field) * 0.10);
+    col = mix(col, spice, smoothstep(0.4, 0.95, n1) * 0.07);
+    col = mix(col, fremen, smoothstep(0.55, 0.98, n2) * 0.035);
 
     // soft vignette
-    float vig = smoothstep(1.25, 0.2, length(p));
-    col *= 0.55 + 0.45 * vig;
+    float vig = smoothstep(1.3, 0.15, length(p));
+    col *= 0.62 + 0.38 * vig;
 
     gl_FragColor = vec4(col, 1.0);
   }
