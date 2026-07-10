@@ -4,6 +4,8 @@ import { AnimatePresence } from "framer-motion";
 import Cursor from "./components/Cursor.jsx";
 import SmoothScroll from "./components/SmoothScroll.jsx";
 import ShaderBackground from "./components/ShaderBackground.jsx";
+import EmberField from "./components/EmberField.jsx";
+import EnergyControls from "./components/EnergyControls.jsx";
 import Loader from "./components/Loader.jsx";
 import Nav from "./components/Nav.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -36,11 +38,19 @@ export default function App() {
         <ShaderBackground />
       </ErrorBoundary>
 
+      <ErrorBoundary name="EmberField">
+        <EmberField />
+      </ErrorBoundary>
+
       <div className="grain" aria-hidden="true" />
 
       <AnimatePresence>
         {!loaded && <Loader key="loader" onDone={() => setLoaded(true)} />}
       </AnimatePresence>
+
+      <ErrorBoundary name="EnergyControls">
+        <EnergyControls />
+      </ErrorBoundary>
 
       <SmoothScroll>
         <Nav />

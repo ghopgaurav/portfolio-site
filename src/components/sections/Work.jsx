@@ -24,6 +24,7 @@ export default function Work() {
                   onClick={() => setOpen(open === i ? -1 : i)}
                   data-cursor
                   data-cursor-label={open === i ? "close" : "open"}
+                  data-embers
                   aria-expanded={open === i}
                 >
                   <span className="work__idx">0{i + 1}</span>
