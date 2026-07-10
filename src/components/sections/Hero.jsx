@@ -53,21 +53,34 @@ export default function Hero({ start }) {
                   animate={{ y: 0 }}
                   transition={{ duration: 1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  Reliable&nbsp;systems,
+                  Fusing&nbsp;SWE&nbsp;foundations
+                </motion.span>
+              </span>
+              <span className="hero__line">
+                <motion.span
+                  className="hero__title-line"
+                  initial={{ y: "110%" }}
+                  animate={{ y: 0 }}
+                  transition={{ duration: 1, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  with&nbsp;AI&nbsp;solutions
                 </motion.span>
               </span>
               <span className="hero__line">
                 <motion.em
                   initial={{ y: "110%", opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 1, delay: 0.42, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  applied&nbsp;AI.
+                  to&nbsp;power&nbsp;what&rsquo;s&nbsp;next.
                 </motion.em>
               </span>
             </>
           )}
         </h1>
+        <motion.p className="hero__subline" {...fade(0.58)}>
+          {profile.subline}
+        </motion.p>
       </motion.div>
 
       <motion.div className="hero__main" style={{ opacity: fadeOut }}>

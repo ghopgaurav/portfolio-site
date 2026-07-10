@@ -8,8 +8,9 @@ import { proximity } from "../lib/proximityStore.js";
 
 const COUNT = 6000;
 const FLARES = 800;
-const SPRING = 0.055;
-const DAMP = 0.86;
+// critically-damped follow (zeta = 1, no overshoot) -> smooth, slow, "expensive"
+const STIFF = 6.5; // low stiffness = long, cinematic settle
+const CRIT = 2 * Math.sqrt(STIFF); // critical damping coefficient
 
 /* ----- glowing energy grains (additive, crisp core) ----- */
 const pointVert = /* glsl */ `
@@ -26,7 +27,7 @@ const pointVert = /* glsl */ `
     float disp = length(p - aBase);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     float core = 1.0 - aCore;
-    float size = uSize * (0.4 + core * 1.15) * (1.0 + disp * 2.0 + uGlow * 0.5 + aExcite * 2.6);
+    float size = uSize * (0.4 + core * 1.15) * (1.0 + disp * 2.0 + uGlow * 0.5 + aExcite * 1.7);
     gl_PointSize = clamp(size * uPixelRatio * (1.0 / -mv.z), 1.0, 30.0);
     vI = core * 0.55 + disp * 2.4 + uGlow * 0.5 + aExcite * 1.6;
     vE = aExcite;
@@ -64,7 +65,9 @@ const flareVert = /* glsl */ `
   varying float vA;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = clamp(uSize * aSize * uPixelRatio * (1.0 / -mv.z), 1.0, 22.0);
+    // size follows the brightness arc: born small, swells at peak, shrinks as it dies
+    float grow = 0.35 + 0.95 * aAlpha;
+    gl_PointSize = clamp(uSize * aSize * grow * uPixelRatio * (1.0 / -mv.z), 1.0, 24.0);
     vA = aAlpha;
     gl_Position = projectionMatrix * mv;
   }
@@ -221,12 +224,15 @@ function Core({ reduced }) {
     const ct = Math.cos(theta.current);
     const st = Math.sin(theta.current);
 
-    const infl = field.R * 0.5;
+    const infl = field.R * 0.55;
     const infl2 = infl * infl;
-    const push = 0.05 * react * (0.25 + prox); // stronger the closer you are
-    const swirl = 1.7; // tangential vortex around the pointer
-    const bulge = push * 2.6; // z-projection dome (multidimensional feel)
-    const edec = Math.pow(0.86, f); // excitation flash decay
+    // how hard the reaction bites, scaled organically by depth toward the centre
+    const depth = prox * prox * (0.35 + 0.65 * react); // 0 at boundary -> 1 dead-centre
+    const twist = 0.9 + prox * 1.4; // static swirl arc (rad), deeper = more coiled
+    const orbit = 0.55 * prox; // slow continuous vortex spin (rad/s) — the cinematic part
+    const lens = field.R * 0.07 * depth; // gentle radial lens outward
+    const dome = field.R * 0.16 * depth; // z-projection toward camera
+    const excDecay = Math.exp(-dt * 2.0); // flashes fade smoothly over ~0.5s
     const amp = flow * field.R * 0.05;
     const globalPulse = reduced ? 0 : Math.sin(t * 0.9) * 0.03;
 
@@ -251,47 +257,47 @@ function Core({ reduced }) {
       const breath = reduced ? 0 : Math.sin(t * 0.5 + seed[i] * 6.283) * 0.05 + globalPulse;
       const fx = reduced ? 0 : Math.sin(by * 1.3 + t * 0.5 + seed[i] * 6.283) * amp;
       const fy = reduced ? 0 : Math.cos(bx * 1.3 + t * 0.6 + seed[i] * 6.283) * amp;
-      const tx = rbx * (1 + breath) + fx;
-      const ty = rby * (1 + breath) + fy;
-      const tz = bz * (1 + breath);
+      let tx = rbx * (1 + breath) + fx;
+      let ty = rby * (1 + breath) + fy;
+      let tz = bz * (1 + breath);
 
-      exc[i] *= edec; // fade any previous flash
+      exc[i] *= excDecay; // fade any previous flash
 
-      if (p.active) {
-        const dx = positions[ix] - p.x;
-        const dy = positions[iy] - p.y;
+      if (p.active && depth > 0.0005) {
+        const dx = tx - p.x;
+        const dy = ty - p.y;
         const d2 = dx * dx + dy * dy;
         if (d2 < infl2 && d2 > 0.00001) {
           const d = Math.sqrt(d2);
           const nrm = 1 - d / infl; // 0 at edge .. 1 at pointer
-          const force = nrm * push;
+          const ease = nrm * nrm * (3 - 2 * nrm); // smoothstep — organic falloff
+          // slow winding vortex: rotate the TARGET around the pointer (no fast impulses)
+          const ang = (twist * ease + t * orbit * ease) * (0.4 + depth);
+          const ca = Math.cos(ang);
+          const sa = Math.sin(ang);
+          const rx = p.x + dx * ca - dy * sa;
+          const ry = p.y + dx * sa + dy * ca;
           const ux = dx / d;
           const uy = dy / d;
-          // radial bulge outward
-          vel[ix] += ux * force * f;
-          vel[iy] += uy * force * f;
-          // tangential vortex swirl → orbiting, quantum-ish motion
-          const sw = nrm * push * swirl;
-          vel[ix] += -uy * sw * f;
-          vel[iy] += ux * sw * f;
-          // z-projection dome toward the camera (power-shaped)
-          vel[iz] += nrm * nrm * bulge * f;
-          // collision excitation — spike, brighter with pointer speed
-          const tgtE = nrm * (0.4 + speedN * 0.9);
+          tx = rx + ux * lens * ease;
+          ty = ry + uy * lens * ease;
+          tz += ease * ease * dome;
+          // collision excitation — brief bright spike, brighter with pointer speed
+          const tgtE = ease * (0.35 + speedN * 0.85) * (0.4 + depth);
           if (tgtE > exc[i]) exc[i] = Math.min(1.2, tgtE);
         }
       }
 
-      vel[ix] += (tx - positions[ix]) * SPRING * f;
-      vel[iy] += (ty - positions[iy]) * SPRING * f;
-      vel[iz] += (tz - positions[iz]) * SPRING * f;
-      const damp = Math.pow(DAMP, f);
-      vel[ix] *= damp;
-      vel[iy] *= damp;
-      vel[iz] *= damp;
-      positions[ix] += vel[ix] * f;
-      positions[iy] += vel[iy] * f;
-      positions[iz] += vel[iz] * f;
+      // critically-damped follow toward the target — smooth, slow, no overshoot
+      const ax = (tx - positions[ix]) * STIFF - vel[ix] * CRIT;
+      const ay = (ty - positions[iy]) * STIFF - vel[iy] * CRIT;
+      const az = (tz - positions[iz]) * STIFF - vel[iz] * CRIT;
+      vel[ix] += ax * dt;
+      vel[iy] += ay * dt;
+      vel[iz] += az * dt;
+      positions[ix] += vel[ix] * dt;
+      positions[iy] += vel[iy] * dt;
+      positions[iz] += vel[iz] * dt;
 
       disturb += Math.abs(vel[ix]) + Math.abs(vel[iy]);
     }
@@ -299,7 +305,7 @@ function Core({ reduced }) {
     field.geometry.attributes.aExcite.needsUpdate = true;
 
     // reaction level is driven by proximity (max at the centre)
-    const level = Math.min(1, (disturb / N) * 130);
+    const level = Math.min(1, (disturb / N) * 5);
     const target = Math.min(1, prox + (p.active ? level * 0.25 : 0));
     energy.current += (target - energy.current) * Math.min(1, dt * 4);
     const idleGlow = reduced ? 0.16 : 0.16 + Math.sin(t * 0.7) * 0.05;
@@ -312,16 +318,20 @@ function Core({ reduced }) {
       haloMesh.current.scale.set(s, s, 1);
     }
 
-    // --- sun flares ejected from the core surface (more the closer you are) ---
+    // --- reaction sparks: born bright at the collision, wander/bounce, fade, die ---
+    // A living "sum": ambient motes off the core + bright motes from the pointer reaction.
     const fl = flares;
-    emitCarry.current += prox * prox * 30 * f;
+    const reacting = p.active && depth > 0.02;
+    emitCarry.current += (prox * prox * 8 + (reacting ? depth * 26 : 0)) * f;
     let emit = Math.floor(emitCarry.current);
     emitCarry.current -= emit;
-    const spawnR = field.R * 0.3;
+    const coreR = field.R * 0.28;
     while (emit-- > 0) {
       const s = fhead.current;
       fhead.current = (fhead.current + 1) % fl.N;
       const s3 = s * 3;
+      // most sparks are struck at the pointer reaction point; the rest simmer off the core
+      const fromReaction = reacting && Math.random() < 0.72;
       let dx = Math.random() * 2 - 1;
       let dy = Math.random() * 2 - 1;
       let dz = Math.random() * 2 - 1;
@@ -329,19 +339,28 @@ function Core({ reduced }) {
       dx /= dl;
       dy /= dl;
       dz /= dl;
-      fl.positions[s3] = dx * spawnR;
-      fl.positions[s3 + 1] = dy * spawnR;
-      fl.positions[s3 + 2] = dz * spawnR;
-      const sp = field.R * (0.5 + Math.random() * 0.9);
-      fl.vel[s3] = dx * sp - dy * sp * 0.3;
-      fl.vel[s3 + 1] = dy * sp + dx * sp * 0.3;
-      fl.vel[s3 + 2] = dz * sp;
+      if (fromReaction) {
+        const jitter = field.R * 0.05;
+        fl.positions[s3] = p.x + dx * jitter;
+        fl.positions[s3 + 1] = p.y + dy * jitter;
+        fl.positions[s3 + 2] = dz * jitter;
+      } else {
+        fl.positions[s3] = dx * coreR;
+        fl.positions[s3 + 1] = dy * coreR;
+        fl.positions[s3 + 2] = dz * coreR;
+      }
+      // slow ejection — the slow-motion is what reads as expensive
+      const sp = field.R * (0.06 + Math.random() * 0.16);
+      fl.vel[s3] = dx * sp - dy * sp * 0.4;
+      fl.vel[s3 + 1] = dy * sp + dx * sp * 0.4;
+      fl.vel[s3 + 2] = dz * sp * 0.6;
       fl.life[s] = 0;
-      fl.max[s] = 0.6 + Math.random() * 1.1;
+      fl.max[s] = 1.1 + Math.random() * 1.9; // long-lived, lingering
       fl.alpha[s] = 0.001;
     }
-    const gback = field.R * 0.5;
-    const fdamp = Math.pow(0.92, f);
+    const gback = field.R * 0.22; // soft pull home so they arc and settle (bounce feel)
+    const turb = field.R * 0.5;
+    const fdamp = Math.exp(-dt * 0.9);
     for (let i = 0; i < fl.N; i++) {
       if (fl.life[i] >= fl.max[i]) {
         if (fl.alpha[i] !== 0) fl.alpha[i] = 0;
@@ -353,8 +372,9 @@ function Core({ reduced }) {
       const py = fl.positions[i3 + 1];
       const pz = fl.positions[i3 + 2];
       const pl = Math.hypot(px, py, pz) || 1;
-      fl.vel[i3] += (-px / pl) * gback * dt;
-      fl.vel[i3 + 1] += (-py / pl) * gback * dt;
+      // gentle gravity back to the core + slow curl turbulence → organic wander
+      fl.vel[i3] += ((-px / pl) * gback + Math.sin(py * 1.7 + t * 0.8) * turb) * dt;
+      fl.vel[i3 + 1] += ((-py / pl) * gback + Math.cos(px * 1.7 + t * 0.7) * turb) * dt;
       fl.vel[i3 + 2] += (-pz / pl) * gback * dt;
       fl.vel[i3] *= fdamp;
       fl.vel[i3 + 1] *= fdamp;
@@ -362,8 +382,9 @@ function Core({ reduced }) {
       fl.positions[i3] += fl.vel[i3] * dt;
       fl.positions[i3 + 1] += fl.vel[i3 + 1] * dt;
       fl.positions[i3 + 2] += fl.vel[i3 + 2] * dt;
+      // brightness arc: fast attack, long decay (bright flash → slow death)
       const age = fl.life[i] / fl.max[i];
-      fl.alpha[i] = Math.sin(age * Math.PI);
+      fl.alpha[i] = age < 0.18 ? age / 0.18 : Math.pow(1 - (age - 0.18) / 0.82, 1.5);
     }
     fl.geometry.attributes.position.needsUpdate = true;
     fl.geometry.attributes.aAlpha.needsUpdate = true;

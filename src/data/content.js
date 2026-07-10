@@ -8,8 +8,10 @@ export const profile = {
   github: "https://github.com/ghopgaurav",
   linkedin: "https://www.linkedin.com/in/gauravghop",
   available: "Open to SWE / AI roles across the US",
+  subline:
+    "Three years shipping production systems across logistics, defense, and AI startups — recently an NYU computer-engineering grad.",
   intro:
-    "I'm Gaurav — a software engineer in New York, fresh out of NYU. I build event-driven backends and the AI layer that runs on top of them. Recently I cut LLM inference costs 34% with a confidence-based model router, and wrote an LSM key-value store that holds 80K ops/sec.",
+    "I'm Gaurav — a software engineer in New York. I build event-driven backends and the AI layer that runs on top of them. Recently I cut LLM inference costs 34% with a confidence-based model router, and wrote an LSM key-value store that holds 80K ops/sec.",
 };
 
 export const stats = [
