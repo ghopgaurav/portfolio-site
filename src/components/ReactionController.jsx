@@ -1,20 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { proximity } from "../lib/proximityStore.js";
 
+const STRIPS = 7; // datamosh tear-lines
+
 /**
- * Maps the distance between the cursor and the energy-core centre into a single
- * reaction value (0 outside the zone, 1 at dead centre). That value:
- *   - is published to the proximity store (read by EnergyField), and
- *   - drives a "reality crash" on the page content — a gravitational-collapse
- *     transform (pull, shake, warp-skew) plus GPU-composited colour tearing
- *     (contrast/saturate/hue, chromatic drop-shadows, a touch of blur).
+ * Maps cursor→core-centre distance into a reaction value (0 outside the zone,
+ * 1 at dead-centre), published to the proximity store AND used to violently
+ * "destroy" the page as you push toward the core:
+ *   - Gravitational collapse: the content pulls toward the core, scales, shears
+ *     (skew), rotates and shakes — harder the closer you are.
+ *   - Datamosh: horizontal tear-strips jump/flicker across the screen + a
+ *     chromatic RGB split (amber/teal) on the text.
  *
- * NB: this deliberately avoids SVG feTurbulence/feDisplacementMap. Measured on
- * Firefox those drop the page from ~110fps to ~31fps whenever the cursor nears
- * the core; the CSS-composited version below runs on the GPU and holds ~100fps
- * for a near-identical "tearing" look on every browser.
+ * Everything here is GPU-composited (transform / opacity / text-shadow only) —
+ * no SVG or CSS layer filters, which tank Firefox/Safari. Holds ~100fps.
  */
 export default function ReactionController() {
+  const stripRefs = useRef([]);
+
   useEffect(() => {
     const hoverable = window.matchMedia && window.matchMedia("(hover: hover)").matches;
     const reduced =
@@ -22,6 +25,7 @@ export default function ReactionController() {
     if (!hoverable || reduced) return;
 
     const root = document.documentElement;
+    const strips = stripRefs.current;
     let orb = null;
     let distortEl = null;
     let heroInView = true;
@@ -48,13 +52,15 @@ export default function ReactionController() {
       crashing = false;
       root.classList.remove("is-crashing");
       root.style.setProperty("--crash", "0");
+      root.style.setProperty("--crash-ab", "0");
       if (distortEl) {
         distortEl.style.transform = "";
         distortEl.style.transformOrigin = "";
-        distortEl.style.filter = "";
       }
+      for (const s of strips) if (s) s.style.opacity = "0";
     };
 
+    const rnd = (n) => (Math.random() - 0.5) * n;
     const smooth = (a, b, t) => a + (b - a) * t;
 
     const tick = () => {
@@ -69,7 +75,6 @@ export default function ReactionController() {
       }
       if (!distortEl) distortEl = document.querySelector(".hero__distort");
 
-      // fully skip layout reads + effects while the hero is off-screen
       if (!heroInView) {
         if (crashing) clearCrash();
         proximity.value = 0;
@@ -92,13 +97,13 @@ export default function ReactionController() {
           const zone = Math.min(r.width, r.height) * 0.55;
           const d = Math.hypot(mouse.x - cx, mouse.y - cy);
           let p = Math.max(0, 1 - d / zone);
-          p = p * p * (3 - 2 * p); // smoothstep — ramps up near the centre
+          p = p * p * (3 - 2 * p);
           target = p;
         }
       }
 
-      // fast attack, slightly slower heal
-      val = smooth(val, target, target > val ? 0.22 : 0.08);
+      // fast attack, quick heal (so it doesn't linger after you leave)
+      val = smooth(val, target, target > val ? 0.24 : 0.14);
       if (val < 0.001) val = 0;
       proximity.value = val;
 
@@ -108,30 +113,45 @@ export default function ReactionController() {
           crashing = true;
           root.classList.add("is-crashing");
         }
-        const e = val * val; // stay calm until you're close, then tear
+        const e = val * val; // stay calm until close, then destroy
 
-        // gravitational collapse toward the core + shake + warp-skew
+        // ---- gravitational collapse (compositor transform) ----
         const dr = distortEl ? distortEl.getBoundingClientRect() : { left: 0, top: 0 };
         const ox = proximity.cx - dr.left;
         const oy = proximity.cy - dr.top;
-        const shake = e * 10;
-        const jx = (Math.random() - 0.5) * shake;
-        const jy = (Math.random() - 0.5) * shake;
-        const rot = (Math.random() - 0.5) * e * 1.2;
-        const sk = (Math.random() - 0.5) * e * 1.6; // skew jitter = organic "tear"
-        const scale = 1 + e * 0.06;
-        const ab = (e * 10).toFixed(1); // chromatic-aberration offset
-
+        let jx = rnd(e * 26);
+        let jy = rnd(e * 20);
+        // occasional violent signal-jump sideways (datamosh)
+        if (Math.random() < e * 0.5) jx += rnd(80 * e);
+        const rot = rnd(e * 2.2);
+        const skX = rnd(e * 7);
+        const skY = rnd(e * 3);
+        const scale = 1 + e * 0.1;
         if (distortEl) {
-          // Compositor-only transform (cheap: transforms the existing layer, no
-          // re-raster). We deliberately set NO `filter:` here — an animated filter
-          // on this large subtree forces Firefox to re-render it to a texture every
-          // frame (measured: 107fps -> 39fps). The colour "tear" comes from the
-          // chromatic text-shadow (CSS, driven by --crash-ab) + the WebGL core.
           distortEl.style.transformOrigin = `${ox}px ${oy}px`;
-          distortEl.style.transform = `translate(${jx}px, ${jy}px) scale(${scale}) rotate(${rot}deg) skewX(${sk}deg)`;
-          root.style.setProperty("--crash", val.toFixed(3));
-          root.style.setProperty("--crash-ab", ab);
+          distortEl.style.transform = `translate(${jx.toFixed(1)}px, ${jy.toFixed(1)}px) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(2)}deg) skew(${skX.toFixed(2)}deg, ${skY.toFixed(2)}deg)`;
+        }
+
+        // ---- chromatic RGB split on text (amber/teal, jumps — never pink) ----
+        const ab = e * 16 * (0.5 + Math.random());
+        root.style.setProperty("--crash", val.toFixed(3));
+        root.style.setProperty("--crash-ab", ab.toFixed(1));
+
+        // ---- datamosh tear-strips (transform + opacity only) ----
+        const vh = window.innerHeight;
+        for (let i = 0; i < strips.length; i++) {
+          const s = strips[i];
+          if (!s) continue;
+          // each strip flickers in with probability scaled by how deep we are
+          if (Math.random() < e * 0.85) {
+            const y = Math.random() * vh;
+            const thick = 1 + Math.random() * 26 * e;
+            const shift = rnd(140 * e);
+            s.style.opacity = (0.25 + Math.random() * 0.55 * e).toFixed(2);
+            s.style.transform = `translate3d(${shift.toFixed(1)}px, ${y.toFixed(1)}px, 0) scaleY(${thick.toFixed(2)})`;
+          } else {
+            s.style.opacity = "0";
+          }
         }
       } else if (crashing) {
         clearCrash();
@@ -149,5 +169,15 @@ export default function ReactionController() {
     };
   }, []);
 
-  return null;
+  return (
+    <div className="crash-glitch" aria-hidden="true">
+      {Array.from({ length: STRIPS }).map((_, i) => (
+        <span
+          key={i}
+          ref={(el) => (stripRefs.current[i] = el)}
+          className={`crash-strip crash-strip--${i % 3}`}
+        />
+      ))}
+    </div>
+  );
 }

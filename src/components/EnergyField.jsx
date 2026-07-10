@@ -242,7 +242,7 @@ function Core({ reduced, tier }) {
     const twist = 0.9 + prox * 1.4; // static swirl arc (rad), deeper = more coiled
     const orbit = 0.55 * prox; // slow continuous vortex spin (rad/s) — the cinematic part
     const lens = field.R * 0.07 * depth; // gentle radial lens outward
-    const dome = field.R * 0.16 * depth; // z-projection toward camera
+    const portal = field.R * 0.6 * depth; // negative-z funnel — a portal into the screen
     const excDecay = Math.exp(-dt * 2.0); // flashes fade smoothly over ~0.5s
     const amp = flow * field.R * 0.05;
     const globalPulse = reduced ? 0 : Math.sin(t * 0.9) * 0.03;
@@ -292,7 +292,8 @@ function Core({ reduced, tier }) {
           const uy = dy / d;
           tx = rx + ux * lens * ease;
           ty = ry + uy * lens * ease;
-          tz += ease * ease * dome;
+          // pull the throat inward (negative z) so the core opens like a portal
+          tz -= ease * ease * portal;
           // collision excitation — brief bright spike, brighter with pointer speed
           const tgtE = ease * (0.35 + speedN * 0.85) * (0.4 + depth);
           if (tgtE > exc[i]) exc[i] = Math.min(1.2, tgtE);

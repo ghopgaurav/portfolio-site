@@ -6,10 +6,14 @@ export default function SmoothScroll({ children }) {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
+    // lerp-based feels far more responsive than a long duration ease — the page
+    // follows the wheel closely instead of gliding behind it (a common "slow
+    // scroll" complaint). Native touch scrolling is left untouched.
     const lenis = new Lenis({
-      duration: 1.15,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      lerp: 0.14,
+      wheelMultiplier: 1.05,
       smoothWheel: true,
+      syncTouch: false,
     });
 
     let raf;

@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Custom cursor: a crisp dot that tracks the pointer 1:1 and a soft ring
- * that lags behind with easing. Grows over [data-cursor] targets and can
- * show a label via data-cursor-label.
+ * Custom cursor: a crisp dot that tracks the pointer 1:1 (no easing lag) plus a
+ * thin reticle ring with a slowly spinning accent arc — a light HUD feel that
+ * stays snappy on every machine. Grows over interactive targets and can show a
+ * label via data-cursor-label.
  */
 export default function Cursor() {
   const dot = useRef(null);
@@ -13,30 +14,21 @@ export default function Cursor() {
   useEffect(() => {
     if (window.matchMedia("(hover: none), (pointer: coarse)").matches) return;
 
-    const pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    const ringPos = { ...pos };
-    let raf;
-
     const onMove = (e) => {
-      pos.x = e.clientX;
-      pos.y = e.clientY;
-      if (dot.current) dot.current.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
+      const x = e.clientX;
+      const y = e.clientY;
+      // 1:1 tracking on the compositor — no rAF, no lerp, no perceived lag
+      if (dot.current) dot.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      if (ring.current) ring.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
       if (label.current) {
-        label.current.style.left = `${pos.x}px`;
-        label.current.style.top = `${pos.y - 38}px`;
+        label.current.style.left = `${x}px`;
+        label.current.style.top = `${y - 40}px`;
       }
-    };
-
-    const loop = () => {
-      ringPos.x += (pos.x - ringPos.x) * 0.18;
-      ringPos.y += (pos.y - ringPos.y) * 0.18;
-      if (ring.current)
-        ring.current.style.transform = `translate(${ringPos.x}px, ${ringPos.y}px) translate(-50%, -50%)`;
-      raf = requestAnimationFrame(loop);
     };
 
     const setHover = (on, text) => {
       ring.current?.classList.toggle("is-hover", on);
+      dot.current?.classList.toggle("is-hover", on);
       if (label.current) {
         label.current.textContent = text || "";
         label.current.classList.toggle("is-show", on && !!text);
@@ -54,15 +46,13 @@ export default function Cursor() {
     const onDown = () => ring.current?.classList.add("is-down");
     const onUp = () => ring.current?.classList.remove("is-down");
 
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
     window.addEventListener("mouseover", onOver);
     window.addEventListener("mouseout", onOut);
     window.addEventListener("mousedown", onDown);
     window.addEventListener("mouseup", onUp);
-    raf = requestAnimationFrame(loop);
 
     return () => {
-      cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseover", onOver);
       window.removeEventListener("mouseout", onOut);

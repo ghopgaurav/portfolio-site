@@ -109,29 +109,45 @@ img { display: block; max-width: 100%; }
   z-index: 9999;
   pointer-events: none;
   border-radius: 50%;
-  mix-blend-mode: difference;
   will-change: transform;
 }
 .cursor-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   background: var(--ink);
+  mix-blend-mode: difference; /* always visible on any background */
   transform: translate(-50%, -50%);
+  transition: width 0.25s var(--ease), height 0.25s var(--ease), opacity 0.25s var(--ease);
 }
+.cursor-dot.is-hover { width: 4px; height: 4px; opacity: 0.6; }
 .cursor-ring {
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--ink);
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(157, 182, 188, 0.35);
   transform: translate(-50%, -50%);
-  transition: width 0.3s var(--ease), height 0.3s var(--ease),
-    background 0.3s var(--ease), opacity 0.3s var(--ease);
+  transition: width 0.28s var(--ease), height 0.28s var(--ease), border-color 0.28s var(--ease);
+}
+/* spinning HUD reticle arc — light, GPU-only (transform rotate) */
+.cursor-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--energy, #ff9838);
+  border-right-color: var(--accent);
+  animation: cursor-spin 3.2s linear infinite;
 }
 .cursor-ring.is-hover {
-  width: 64px;
-  height: 64px;
-  background: rgba(214, 228, 230, 0.1);
+  width: 58px;
+  height: 58px;
+  border-color: rgba(157, 182, 188, 0.15);
 }
-.cursor-ring.is-down { width: 28px; height: 28px; }
+.cursor-ring.is-down { width: 22px; height: 22px; }
+@keyframes cursor-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cursor-ring::before { animation: none; }
+}
 .cursor-label {
   position: fixed;
   z-index: 9999;
@@ -330,12 +346,39 @@ img { display: block; max-width: 100%; }
 }
 
 /* Chromatic "RGB split" during the crash — done with text-shadow so it rides
-   the text rasteriser instead of forcing an expensive layer filter pass. */
+   the text rasteriser instead of forcing an expensive layer filter pass.
+   Amber + teal to match the vibe (deliberately no pink/magenta). */
 .is-crashing .hero__distort {
   text-shadow:
-    calc(var(--crash-ab, 0) * 1px) 0 rgba(255, 45, 85, 0.55),
-    calc(var(--crash-ab, 0) * -1px) 0 rgba(45, 190, 255, 0.55);
+    calc(var(--crash-ab, 0) * 1px) 0 rgba(255, 152, 56, 0.6),
+    calc(var(--crash-ab, 0) * -1px) 0 rgba(96, 208, 224, 0.55);
 }
+
+/* Datamosh tear-strips: full-width bands that jump/flicker across the screen
+   during the crash. Positioned/animated purely via transform + opacity. */
+.crash-glitch {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+.crash-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  opacity: 0;
+  transform: translate3d(0, -10px, 0);
+  transform-origin: top;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+.crash-strip--0 { background: linear-gradient(90deg, transparent, rgba(255, 152, 56, 0.85), transparent); }
+.crash-strip--1 { background: linear-gradient(90deg, transparent, rgba(96, 208, 224, 0.8), transparent); }
+.crash-strip--2 { background: linear-gradient(90deg, transparent, rgba(233, 236, 238, 0.7), transparent); }
 
 .hero__main { display: block; }
 .hero__text { min-width: 0; max-width: 600px; }
