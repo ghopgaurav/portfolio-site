@@ -6,6 +6,7 @@ import SmoothScroll from "./components/SmoothScroll.jsx";
 import ShaderBackground from "./components/ShaderBackground.jsx";
 import EmberField from "./components/EmberField.jsx";
 import EnergyControls from "./components/EnergyControls.jsx";
+import ReactionController from "./components/ReactionController.jsx";
 import Loader from "./components/Loader.jsx";
 import Nav from "./components/Nav.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -50,6 +51,10 @@ export default function App() {
 
       <ErrorBoundary name="EnergyControls">
         <EnergyControls />
+      </ErrorBoundary>
+
+      <ErrorBoundary name="ReactionController">
+        <ReactionController />
       </ErrorBoundary>
 
       <SmoothScroll>

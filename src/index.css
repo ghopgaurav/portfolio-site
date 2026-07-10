@@ -315,6 +315,23 @@ img { display: block; max-width: 100%; }
   pointer-events: auto;
 }
 
+/* wrapper that "crashes" (warps) during the core reaction */
+.hero__distort {
+  position: relative;
+  z-index: 2;
+  pointer-events: none; /* let the pointer reach the core canvas behind */
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(40px, 7vh, 80px);
+  min-height: 0;
+  will-change: transform, filter;
+}
+
+/* hidden SVG filter defs for the crash distortion */
+.reactor-defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+
 .hero__main { display: block; }
 .hero__text { min-width: 0; max-width: 600px; }
 .hero__role {

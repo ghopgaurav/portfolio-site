@@ -33,6 +33,8 @@ export default function Hero({ start }) {
         </ErrorBoundary>
       </motion.div>
 
+      {/* everything below warps during the core "crash"; the graphic above does not */}
+      <div className="hero__distort">
       <motion.div className="hero__head" style={{ y: yText, opacity: fadeOut }}>
         <motion.div className="hero__eyebrow" {...fade(0.05)}>
           <span className="hero__role mono">{profile.role}</span>
@@ -117,6 +119,7 @@ export default function Hero({ start }) {
           </div>
         </div>
       </motion.div>
+      </div>
     </header>
   );
 }

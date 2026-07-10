@@ -4,8 +4,10 @@ import * as THREE from "three";
 import { useSound } from "./SoundProvider.jsx";
 import { setEnergyLevel, spark } from "../lib/audio.js";
 import { energyParams } from "../lib/energyStore.js";
+import { proximity } from "../lib/proximityStore.js";
 
 const COUNT = 6000;
+const FLARES = 800;
 const SPRING = 0.055;
 const DAMP = 0.86;
 
@@ -21,7 +23,7 @@ const pointVert = /* glsl */ `
     vec3 p = position;
     float disp = length(p - aBase);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    float core = 1.0 - aCore;                 // 1 at centre, 0 at edge
+    float core = 1.0 - aCore;
     float size = uSize * (0.4 + core * 1.15) * (1.0 + disp * 2.0 + uGlow * 0.5);
     gl_PointSize = clamp(size * uPixelRatio * (1.0 / -mv.z), 1.0, 26.0);
     vI = core * 0.55 + disp * 2.4 + uGlow * 0.5;
@@ -37,12 +39,43 @@ const pointFrag = /* glsl */ `
     vec2 c = gl_PointCoord - 0.5;
     float d = length(c);
     if (d > 0.5) discard;
-    float core = smoothstep(0.5, 0.055, d);   // crisp bright centre
-    float halo = smoothstep(0.5, 0.0, d);      // soft surrounding glow
+    float core = smoothstep(0.5, 0.055, d);
+    float halo = smoothstep(0.5, 0.0, d);
     float i = clamp(vI, 0.0, 1.4);
     vec3 col = mix(uColorEdge, uColorCore, clamp(i, 0.0, 1.0));
     float a = (core * 0.9 + halo * 0.32) * clamp(i, 0.05, 1.2) * 0.55;
     gl_FragColor = vec4(col, a);
+  }
+`;
+
+/* ----- ejected sun-flares (recycled pool) ----- */
+const flareVert = /* glsl */ `
+  uniform float uSize;
+  uniform float uPixelRatio;
+  attribute float aAlpha;
+  attribute float aSize;
+  varying float vA;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = clamp(uSize * aSize * uPixelRatio * (1.0 / -mv.z), 1.0, 22.0);
+    vA = aAlpha;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+const flareFrag = /* glsl */ `
+  precision highp float;
+  uniform vec3 uHot;
+  uniform vec3 uAmber;
+  varying float vA;
+  void main() {
+    if (vA <= 0.002) discard;
+    vec2 c = gl_PointCoord - 0.5;
+    float d = length(c);
+    if (d > 0.5) discard;
+    float core = smoothstep(0.5, 0.04, d);
+    float halo = smoothstep(0.5, 0.0, d);
+    vec3 col = mix(uAmber, uHot, clamp(vA, 0.0, 1.0));
+    gl_FragColor = vec4(col, (core * 0.9 + halo * 0.3) * vA * 0.9);
   }
 `;
 
@@ -76,7 +109,7 @@ function buildField(vw, vh) {
   const seed = new Float32Array(COUNT);
   const span = R * 1.25;
   for (let i = 0; i < COUNT; i++) {
-    const rr = Math.pow(Math.random(), 0.6); // denser toward the core
+    const rr = Math.pow(Math.random(), 0.6);
     const r = rr * span;
     const th = Math.random() * Math.PI * 2;
     const zz = (Math.random() - 0.5) * R * 0.55;
@@ -98,12 +131,29 @@ function buildField(vw, vh) {
   return { geometry, positions, base, vel, core, seed, N: COUNT, R };
 }
 
+function buildFlares() {
+  const positions = new Float32Array(FLARES * 3);
+  const alpha = new Float32Array(FLARES);
+  const size = new Float32Array(FLARES);
+  const vel = new Float32Array(FLARES * 3);
+  const life = new Float32Array(FLARES).fill(999);
+  const max = new Float32Array(FLARES).fill(1);
+  for (let i = 0; i < FLARES; i++) size[i] = 0.6 + Math.random() * 1.3;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aAlpha", new THREE.BufferAttribute(alpha, 1));
+  geometry.setAttribute("aSize", new THREE.BufferAttribute(size, 1));
+  return { geometry, positions, alpha, size, vel, life, max, N: FLARES };
+}
+
 function Core({ reduced }) {
   const { viewport } = useThree();
   const { on } = useSound();
-  const pointer = useRef({ x: 0, y: 0, active: false, wasActive: false });
+  const pointer = useRef({ x: 0, y: 0, active: false });
   const energy = useRef(0.0);
   const theta = useRef(0.0);
+  const emitCarry = useRef(0);
+  const fhead = useRef(0);
   const pointMat = useRef();
   const haloMat = useRef();
   const haloMesh = useRef();
@@ -113,7 +163,9 @@ function Core({ reduced }) {
     () => buildField(viewport.width || 4, viewport.height || 4),
     [dimsKey]
   );
+  const flares = useMemo(() => buildFlares(), []);
   useEffect(() => () => field.geometry.dispose(), [field]);
+  useEffect(() => () => flares.geometry.dispose(), [flares]);
 
   const pointUniforms = useMemo(
     () => ({
@@ -122,15 +174,23 @@ function Core({ reduced }) {
         value: Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2),
       },
       uGlow: { value: 0.12 },
-      uColorCore: { value: new THREE.Color("#fff3d6") }, // white-hot
-      uColorEdge: { value: new THREE.Color("#ff8c1f") }, // molten amber
+      uColorCore: { value: new THREE.Color("#fff3d6") },
+      uColorEdge: { value: new THREE.Color("#ff8c1f") },
     }),
     []
   );
   const haloUniforms = useMemo(
+    () => ({ uGlow: { value: 0.12 }, uColor: { value: new THREE.Color("#ffa23a") } }),
+    []
+  );
+  const flareUniforms = useMemo(
     () => ({
-      uGlow: { value: 0.12 },
-      uColor: { value: new THREE.Color("#ffa23a") },
+      uSize: { value: 34.0 },
+      uPixelRatio: {
+        value: Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2),
+      },
+      uHot: { value: new THREE.Color("#fff6e2") },
+      uAmber: { value: new THREE.Color("#ff7d16") },
     }),
     []
   );
@@ -140,9 +200,9 @@ function Core({ reduced }) {
     const p = pointer.current;
     const t = state.clock.elapsedTime;
     const dt = Math.min(rawDt, 1 / 30);
-    const f = Math.min(Math.max(dt * 60, 0.4), 2.2); // frame-rate normaliser
+    const f = Math.min(Math.max(dt * 60, 0.4), 2.2);
 
-    // live physics params from the side meter
+    const prox = proximity.value; // 0 outside zone .. 1 dead centre
     const pr = energyParams.rotation;
     const flow = energyParams.flow;
     const react = energyParams.reactivity;
@@ -154,7 +214,7 @@ function Core({ reduced }) {
 
     const infl = field.R * 0.5;
     const infl2 = infl * infl;
-    const push = 0.05 * react;
+    const push = 0.05 * react * (0.25 + prox); // stronger the closer you are
     const amp = flow * field.R * 0.05;
     const globalPulse = reduced ? 0 : Math.sin(t * 0.9) * 0.03;
     let disturb = 0;
@@ -167,11 +227,9 @@ function Core({ reduced }) {
       const by = base[iy];
       const bz = base[iz];
 
-      // slow rotation of the home position (keeps pointer space aligned)
       const rbx = bx * ct - by * st;
       const rby = bx * st + by * ct;
 
-      // organic flow drift + breathing pulse
       const breath = reduced ? 0 : Math.sin(t * 0.5 + seed[i] * 6.283) * 0.05 + globalPulse;
       const fx = reduced ? 0 : Math.sin(by * 1.3 + t * 0.5 + seed[i] * 6.283) * amp;
       const fy = reduced ? 0 : Math.cos(bx * 1.3 + t * 0.6 + seed[i] * 6.283) * amp;
@@ -207,25 +265,80 @@ function Core({ reduced }) {
     }
     field.geometry.attributes.position.needsUpdate = true;
 
-    // energy rises with disturbance, decays to a calm breathing idle
+    // reaction level is driven by proximity (max at the centre)
     const level = Math.min(1, (disturb / N) * 130);
-    const target = p.active ? Math.max(0.4, level) : 0.0;
-    energy.current += (target - energy.current) * Math.min(1, dt * 3);
+    const target = Math.min(1, prox + (p.active ? level * 0.25 : 0));
+    energy.current += (target - energy.current) * Math.min(1, dt * 4);
     const idleGlow = reduced ? 0.16 : 0.16 + Math.sin(t * 0.7) * 0.05;
-    const glow = (idleGlow + energy.current * 0.9) * glowMul;
+    const glow = (idleGlow + energy.current * 1.0) * glowMul;
 
     if (pointMat.current) pointMat.current.uniforms.uGlow.value = glow;
     if (haloMat.current) haloMat.current.uniforms.uGlow.value = glow;
     if (haloMesh.current) {
-      const s = field.R * 2.6 * (1 + energy.current * 0.18 + globalPulse);
+      const s = field.R * 2.6 * (1 + energy.current * 0.22 + globalPulse);
       haloMesh.current.scale.set(s, s, 1);
     }
 
-    if (on) {
-      setEnergyLevel(0.12 + energy.current);
-      if (p.active && level > 0.12 && Math.random() < 0.06) spark(0.2 + level * 0.5);
+    // --- sun flares ejected from the core surface (more the closer you are) ---
+    const fl = flares;
+    emitCarry.current += prox * prox * 30 * f;
+    let emit = Math.floor(emitCarry.current);
+    emitCarry.current -= emit;
+    const spawnR = field.R * 0.3;
+    while (emit-- > 0) {
+      const s = fhead.current;
+      fhead.current = (fhead.current + 1) % fl.N;
+      const s3 = s * 3;
+      let dx = Math.random() * 2 - 1;
+      let dy = Math.random() * 2 - 1;
+      let dz = Math.random() * 2 - 1;
+      const dl = Math.hypot(dx, dy, dz) || 1;
+      dx /= dl;
+      dy /= dl;
+      dz /= dl;
+      fl.positions[s3] = dx * spawnR;
+      fl.positions[s3 + 1] = dy * spawnR;
+      fl.positions[s3 + 2] = dz * spawnR;
+      const sp = field.R * (0.5 + Math.random() * 0.9);
+      fl.vel[s3] = dx * sp - dy * sp * 0.3;
+      fl.vel[s3 + 1] = dy * sp + dx * sp * 0.3;
+      fl.vel[s3 + 2] = dz * sp;
+      fl.life[s] = 0;
+      fl.max[s] = 0.6 + Math.random() * 1.1;
+      fl.alpha[s] = 0.001;
     }
-    p.wasActive = p.active;
+    const gback = field.R * 0.5;
+    const fdamp = Math.pow(0.92, f);
+    for (let i = 0; i < fl.N; i++) {
+      if (fl.life[i] >= fl.max[i]) {
+        if (fl.alpha[i] !== 0) fl.alpha[i] = 0;
+        continue;
+      }
+      const i3 = i * 3;
+      fl.life[i] += dt;
+      const px = fl.positions[i3];
+      const py = fl.positions[i3 + 1];
+      const pz = fl.positions[i3 + 2];
+      const pl = Math.hypot(px, py, pz) || 1;
+      fl.vel[i3] += (-px / pl) * gback * dt;
+      fl.vel[i3 + 1] += (-py / pl) * gback * dt;
+      fl.vel[i3 + 2] += (-pz / pl) * gback * dt;
+      fl.vel[i3] *= fdamp;
+      fl.vel[i3 + 1] *= fdamp;
+      fl.vel[i3 + 2] *= fdamp;
+      fl.positions[i3] += fl.vel[i3] * dt;
+      fl.positions[i3 + 1] += fl.vel[i3 + 1] * dt;
+      fl.positions[i3 + 2] += fl.vel[i3 + 2] * dt;
+      const age = fl.life[i] / fl.max[i];
+      fl.alpha[i] = Math.sin(age * Math.PI);
+    }
+    fl.geometry.attributes.position.needsUpdate = true;
+    fl.geometry.attributes.aAlpha.needsUpdate = true;
+
+    if (on) {
+      setEnergyLevel(0.1 + energy.current);
+      if (prox > 0.05 && Math.random() < prox * 0.4) spark(0.15 + prox * 0.6);
+    }
   });
 
   const onMove = (e) => {
@@ -235,7 +348,6 @@ function Core({ reduced }) {
   };
   const onLeave = () => {
     pointer.current.active = false;
-    if (on) setEnergyLevel(0.12);
   };
 
   return (
@@ -264,6 +376,17 @@ function Core({ reduced }) {
           vertexShader={pointVert}
           fragmentShader={pointFrag}
           uniforms={pointUniforms}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+
+      <points geometry={flares.geometry}>
+        <shaderMaterial
+          vertexShader={flareVert}
+          fragmentShader={flareFrag}
+          uniforms={flareUniforms}
           transparent
           depthWrite={false}
           blending={THREE.AdditiveBlending}
