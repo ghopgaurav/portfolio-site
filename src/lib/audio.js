@@ -1,44 +1,32 @@
 /**
- * Soothing, tactile audio on the Web Audio API — no audio assets.
- * - Warm, lowpass-filtered pentatonic tones with a gentle delay (zen / ASMR).
- * - Soft "tactile" ticks for UI hovers.
- * - A smooth, airy "wind over sand" bed mapped to how much the graphic is
- *   being disturbed (setSandLevel).
+ * Futuristic / dystopian audio on the Web Audio API — no audio assets.
+ * - A cold "reactor" drone bed whose level/brightness maps to the energy core
+ *   being disturbed (setEnergyLevel).
+ * - Crystalline, glassy tones (whole-tone scale) with shimmer on interaction.
+ * - Crisp digital ticks for UI hovers.
  * Everything is wrapped in try/catch so audio can never break the page.
  */
 
 let ctx = null;
 let master = null;
-let bus = null;          // shared lowpass bus for warmth
+let bus = null;
 let delay = null;
 let delayGain = null;
-let noiseBuffer = null;
-let bedSrc = null;
-let bedFilter = null;
-let bedGain = null;
+let droneA = null;
+let droneB = null;
+let droneSub = null;
+let droneFilter = null;
+let droneGain = null;
 let enabled = false;
 let lastTactile = 0;
 let lastTone = 0;
 
-// C major pentatonic — calm and consonant in any order
-const SCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
+// E whole-tone — dreamy, cold, futuristic in any order
+const SCALE = [329.63, 369.99, 415.3, 466.16, 523.25, 587.33, 659.25, 739.99];
 
 export function noteFromUnit(u) {
   const i = Math.max(0, Math.min(SCALE.length - 1, Math.floor(u * SCALE.length)));
   return SCALE[i];
-}
-
-function makeNoise(c) {
-  const len = Math.floor(c.sampleRate * 2);
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const data = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    const white = Math.random() * 2 - 1;
-    last = (last + 0.02 * white) / 1.02; // smoothed = airy, not gritty
-    data[i] = last * 2.6;
-  }
-  return buf;
 }
 
 function ensureContext() {
@@ -52,40 +40,49 @@ function ensureContext() {
     master.gain.value = 0.0;
     master.connect(ctx.destination);
 
-    // warm bus
     bus = ctx.createBiquadFilter();
     bus.type = "lowpass";
-    bus.frequency.value = 3200;
-    bus.Q.value = 0.3;
+    bus.frequency.value = 5200;
+    bus.Q.value = 0.2;
     bus.connect(master);
 
-    // gentle space
+    // shimmer / space
     delay = ctx.createDelay(1.0);
-    delay.delayTime.value = 0.3;
+    delay.delayTime.value = 0.36;
     delayGain = ctx.createGain();
-    delayGain.gain.value = 0.28;
+    delayGain.gain.value = 0.32;
     const feedback = ctx.createGain();
-    feedback.gain.value = 0.3;
+    feedback.gain.value = 0.36;
     delay.connect(feedback);
     feedback.connect(delay);
     delay.connect(delayGain);
     delayGain.connect(bus);
 
-    // airy wind bed
-    noiseBuffer = makeNoise(ctx);
-    bedSrc = ctx.createBufferSource();
-    bedSrc.buffer = noiseBuffer;
-    bedSrc.loop = true;
-    bedFilter = ctx.createBiquadFilter();
-    bedFilter.type = "lowpass";
-    bedFilter.frequency.value = 600;
-    bedFilter.Q.value = 0.4;
-    bedGain = ctx.createGain();
-    bedGain.gain.value = 0.0;
-    bedSrc.connect(bedFilter);
-    bedFilter.connect(bedGain);
-    bedGain.connect(master);
-    bedSrc.start(0);
+    // cold reactor drone — two detuned saws + a sub sine
+    droneFilter = ctx.createBiquadFilter();
+    droneFilter.type = "lowpass";
+    droneFilter.frequency.value = 140;
+    droneFilter.Q.value = 6;
+    droneGain = ctx.createGain();
+    droneGain.gain.value = 0.0;
+    droneFilter.connect(droneGain);
+    droneGain.connect(master);
+
+    droneA = ctx.createOscillator();
+    droneA.type = "sawtooth";
+    droneA.frequency.value = 82.41; // E2
+    droneB = ctx.createOscillator();
+    droneB.type = "sawtooth";
+    droneB.frequency.value = 82.41 * 1.006; // detune → slow beating
+    droneSub = ctx.createOscillator();
+    droneSub.type = "sine";
+    droneSub.frequency.value = 41.2; // E1 sub
+    droneA.connect(droneFilter);
+    droneB.connect(droneFilter);
+    droneSub.connect(droneFilter);
+    droneA.start(0);
+    droneB.start(0);
+    droneSub.start(0);
 
     return ctx;
   } catch (e) {
@@ -107,12 +104,16 @@ export async function enableAudio() {
     const now = c.currentTime;
     master.gain.cancelScheduledValues(now);
     master.gain.setValueAtTime(master.gain.value, now);
-    master.gain.linearRampToValueAtTime(0.9, now + 0.4);
+    master.gain.linearRampToValueAtTime(0.9, now + 0.5);
 
-    // welcome: a soft, slow chord
-    tone(SCALE[0], 2.2, 0.4);
-    setTimeout(() => tone(SCALE[2], 2.2, 0.32), 140);
-    setTimeout(() => tone(SCALE[4], 2.6, 0.28), 300);
+    // power-up: reactor swell + crystalline chord
+    droneGain.gain.cancelScheduledValues(now);
+    droneGain.gain.setValueAtTime(0.0001, now);
+    droneGain.gain.linearRampToValueAtTime(0.05, now + 0.9);
+    droneGain.gain.linearRampToValueAtTime(0.02, now + 2.2);
+    tone(SCALE[0], 2.6, 0.34);
+    setTimeout(() => tone(SCALE[3], 2.6, 0.28), 160);
+    setTimeout(() => tone(SCALE[5], 3.0, 0.24), 340);
     return true;
   } catch (e) {
     console.warn("[audio] enable failed", e);
@@ -126,53 +127,56 @@ export function disableAudio() {
     const now = ctx.currentTime;
     master.gain.cancelScheduledValues(now);
     master.gain.setValueAtTime(master.gain.value, now);
-    master.gain.linearRampToValueAtTime(0.0, now + 0.25);
+    master.gain.linearRampToValueAtTime(0.0, now + 0.3);
   }
 }
 
-/** Warm pentatonic tone — zen bell/pad. */
-export function tone(freq = SCALE[0], dur = 1.8, vel = 0.5) {
+/** Crystalline, glassy tone with shimmer. */
+export function tone(freq = SCALE[0], dur = 2.0, vel = 0.5) {
   if (!enabled || !ctx) return;
   const t = ctx.currentTime;
   if (t - lastTone < 0.05) return;
   lastTone = t;
   try {
-    const o1 = ctx.createOscillator();
-    o1.type = "sine";
-    o1.frequency.value = freq;
-    const o2 = ctx.createOscillator();
-    o2.type = "sine";
-    o2.frequency.value = freq * 2.0; // soft overtone
-    const o2g = ctx.createGain();
-    o2g.gain.value = 0.18;
-
+    const partials = [
+      { m: 1.0, g: 1.0, type: "sine" },
+      { m: 2.0, g: 0.28, type: "sine" },
+      { m: 3.01, g: 0.16, type: "sine" }, // slightly inharmonic → glassy
+    ];
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 2400;
+    lp.frequency.value = 5200;
 
     const g = ctx.createGain();
-    const peak = 0.16 * Math.max(0.15, Math.min(1, vel));
+    const peak = 0.14 * Math.max(0.12, Math.min(1, vel));
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(peak, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 
-    o1.connect(lp);
-    o2.connect(o2g);
-    o2g.connect(lp);
+    const oscs = partials.map((pt) => {
+      const o = ctx.createOscillator();
+      o.type = pt.type;
+      o.frequency.value = freq * pt.m;
+      const og = ctx.createGain();
+      og.gain.value = pt.g;
+      o.connect(og);
+      og.connect(lp);
+      return o;
+    });
     lp.connect(g);
     g.connect(bus);
     g.connect(delay);
 
-    o1.start(t);
-    o2.start(t);
-    o1.stop(t + dur + 0.1);
-    o2.stop(t + dur + 0.1);
+    oscs.forEach((o) => {
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    });
   } catch (e) {
     /* never crash the UI */
   }
 }
 
-/** Soft, short tactile tick for UI hovers. */
+/** Crisp digital tick for UI hovers. */
 export function tactile(vel = 0.4) {
   if (!enabled || !ctx) return;
   const t = ctx.currentTime;
@@ -180,34 +184,34 @@ export function tactile(vel = 0.4) {
   lastTactile = t;
   try {
     const o = ctx.createOscillator();
-    o.type = "triangle";
-    o.frequency.value = 480 + Math.random() * 160;
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 1600;
+    o.type = "sine";
+    o.frequency.value = 1100 + Math.random() * 500;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 700;
     const g = ctx.createGain();
-    const peak = 0.05 * Math.max(0.1, Math.min(1, vel));
+    const peak = 0.04 * Math.max(0.1, Math.min(1, vel));
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-    o.connect(lp);
-    lp.connect(g);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    o.connect(hp);
+    hp.connect(g);
     g.connect(bus);
     o.start(t);
-    o.stop(t + 0.12);
+    o.stop(t + 0.08);
   } catch (e) {
     /* noop */
   }
 }
 
-/** Continuous disturbance level 0..1 — soft airy wind bed. */
-export function setSandLevel(level) {
-  if (!enabled || !ctx || !bedGain) return;
+/** Energy disturbance 0..1 — drives the reactor drone. */
+export function setEnergyLevel(level) {
+  if (!enabled || !ctx || !droneGain) return;
   try {
     const v = Math.max(0, Math.min(1, level));
     const now = ctx.currentTime;
-    bedGain.gain.setTargetAtTime(v * v * 0.07, now, 0.12);
-    bedFilter.frequency.setTargetAtTime(450 + v * 1400, now, 0.15);
+    droneGain.gain.setTargetAtTime(0.015 + v * v * 0.07, now, 0.1);
+    droneFilter.frequency.setTargetAtTime(120 + v * 900, now, 0.12);
   } catch (e) {
     /* noop */
   }

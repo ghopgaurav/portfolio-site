@@ -5,16 +5,16 @@
    ============================================================ */
 
 :root {
-  --bg: #120c07;
-  --bg-2: #1a1109;
-  --ink: #ece0c8;
-  --ink-dim: #b8a684;
-  --ink-faint: #80715a;
-  --line: rgba(236, 224, 200, 0.12);
-  --accent: #e3963f;        /* spice amber */
-  --accent-2: #c2542e;      /* terracotta / rust */
-  --accent-3: #6f93a3;      /* Fremen spice-blue (used sparingly) */
-  --accent-rgb: 227, 150, 63;
+  --bg: #08090c;            /* dark room, cool near-black */
+  --bg-2: #0e1014;
+  --ink: #e9edf2;           /* cold off-white */
+  --ink-dim: #98a1ac;       /* cool grey */
+  --ink-faint: #5d656f;
+  --line: rgba(233, 237, 242, 0.11);
+  --accent: #45c7f0;        /* cold nuclear / Cherenkov blue */
+  --accent-2: #8a93a0;      /* steel */
+  --accent-3: #c2ccd8;      /* silver */
+  --accent-rgb: 69, 199, 240;
   --maxw: 1280px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --pad: clamp(20px, 5vw, 64px);
@@ -267,9 +267,9 @@ img { display: block; max-width: 100%; }
   box-shadow: 0 0 0 0 var(--accent); animation: ring 2.2s infinite;
 }
 @keyframes ring {
-  0% { box-shadow: 0 0 0 0 rgba(227,150,63,0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(227,150,63,0); }
-  100% { box-shadow: 0 0 0 0 rgba(227,150,63,0); }
+  0% { box-shadow: 0 0 0 0 rgba(69,199,240,0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(69,199,240,0); }
+  100% { box-shadow: 0 0 0 0 rgba(69,199,240,0); }
 }
 
 /* Interactive sand backdrop — sits behind the content, covers ~a third */
@@ -278,11 +278,11 @@ img { display: block; max-width: 100%; }
   right: 0;
   bottom: 0;
   width: min(80%, 1040px);
-  height: 68%;
+  height: 74%;
   z-index: 0;
   pointer-events: auto;
-  -webkit-mask-image: radial-gradient(125% 125% at 82% 92%, #000 28%, transparent 80%);
-  mask-image: radial-gradient(125% 125% at 82% 92%, #000 28%, transparent 80%);
+  -webkit-mask-image: radial-gradient(closest-side at 62% 54%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 62% 54%, #000 58%, transparent 100%);
 }
 
 /* content sits above the sand; gaps let pointer reach the sand */
@@ -369,7 +369,7 @@ img { display: block; max-width: 100%; }
 }
 
 @media (max-width: 860px) {
-  .hero__sand { width: 100%; height: 52%; -webkit-mask-image: radial-gradient(140% 120% at 60% 100%, #000 24%, transparent 82%); mask-image: radial-gradient(140% 120% at 60% 100%, #000 24%, transparent 82%); }
+  .hero__sand { width: 100%; height: 50%; -webkit-mask-image: radial-gradient(closest-side at 60% 60%, #000 55%, transparent 100%); mask-image: radial-gradient(closest-side at 60% 60%, #000 55%, transparent 100%); }
   .hero__text { max-width: 100%; }
 }
 
@@ -438,7 +438,7 @@ img { display: block; max-width: 100%; }
   position: absolute; inset: 0;
   border-radius: 14px;
   background:
-    radial-gradient(120% 140% at 0% 50%, rgba(227,150,63,0.10), transparent 55%),
+    radial-gradient(120% 140% at 0% 50%, rgba(69,199,240,0.10), transparent 55%),
     rgba(236, 230, 216, 0.025);
   opacity: 0;
   transition: opacity 0.5s var(--ease);
@@ -501,7 +501,7 @@ img { display: block; max-width: 100%; }
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(227,150,63,0.13), transparent 60%);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(69,199,240,0.13), transparent 60%);
   opacity: 0;
   transition: opacity 0.4s var(--ease);
   pointer-events: none;
@@ -667,7 +667,7 @@ img { display: block; max-width: 100%; }
   background: rgba(14, 13, 11, 0.82);
   backdrop-filter: blur(16px);
   border: 1px solid var(--line);
-  box-shadow: 0 24px 60px -24px rgba(0,0,0,0.8), 0 0 0 1px rgba(227,150,63,0.14) inset;
+  box-shadow: 0 24px 60px -24px rgba(0,0,0,0.8), 0 0 0 1px rgba(69,199,240,0.14) inset;
 }
 .sound-prompt__wave { display: flex; align-items: flex-end; gap: 3px; height: 26px; flex-shrink: 0; }
 .sound-prompt__wave i { width: 3px; background: linear-gradient(var(--accent), var(--accent-3)); border-radius: 3px; animation: eq 1s ease-in-out infinite; }

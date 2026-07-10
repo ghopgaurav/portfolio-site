@@ -66,20 +66,20 @@ const fragment = /* glsl */ `
     float n2 = fbm(q * 1.8 - vec2(t * 0.7, t));
     float field = n1 * 0.6 + n2 * 0.4;
 
-    // dune palette
-    vec3 bg    = vec3(0.071, 0.047, 0.027);   // deep desert night
-    vec3 sand  = vec3(0.776, 0.588, 0.318);   // lit sand
-    vec3 spice = vec3(0.890, 0.588, 0.247);   // spice amber
-    vec3 fremen= vec3(0.435, 0.576, 0.639);   // muted spice-blue
+    // dark room — cold, dystopian, faint light scatter
+    vec3 bg    = vec3(0.031, 0.035, 0.043);   // near-black, cool
+    vec3 steel = vec3(0.30, 0.35, 0.42);      // cold steel light
+    vec3 glow  = vec3(0.20, 0.55, 0.72);      // faint nuclear blue
+    vec3 shade = vec3(0.015, 0.018, 0.024);   // deep shadow
 
     vec3 col = bg;
-    col = mix(col, sand, smoothstep(0.05, 0.62, field) * 0.10);
-    col = mix(col, spice, smoothstep(0.4, 0.95, n1) * 0.07);
-    col = mix(col, fremen, smoothstep(0.55, 0.98, n2) * 0.035);
+    col = mix(col, shade, smoothstep(0.1, 0.7, 1.0 - field) * 0.5);
+    col = mix(col, steel, smoothstep(0.15, 0.7, field) * 0.09);
+    col = mix(col, glow, smoothstep(0.55, 0.98, n1) * 0.05);
 
-    // soft vignette
-    float vig = smoothstep(1.3, 0.15, length(p));
-    col *= 0.62 + 0.38 * vig;
+    // soft vignette — light pooling toward the centre of the room
+    float vig = smoothstep(1.35, 0.1, length(p));
+    col *= 0.5 + 0.5 * vig;
 
     gl_FragColor = vec4(col, 1.0);
   }

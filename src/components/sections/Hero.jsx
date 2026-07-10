@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Magnetic from "../Magnetic.jsx";
 import ErrorBoundary from "../ErrorBoundary.jsx";
-import SandField from "../SandField.jsx";
+import EnergyField from "../EnergyField.jsx";
 import { profile } from "../../data/content.js";
 
 const clients = ["Lockheed Martin", "US Navy", "Tiny Archives", "Duende"];
@@ -26,10 +26,10 @@ export default function Hero({ start }) {
 
   return (
     <header className="hero" id="top" ref={ref}>
-      {/* Interactive sand — a soft matte backdrop behind the content */}
+      {/* Interactive energy core — a glowing backdrop behind the content */}
       <motion.div className="hero__sand" style={{ y: yGfx, opacity: fadeOut }}>
-        <ErrorBoundary name="SandField">
-          <SandField />
+        <ErrorBoundary name="EnergyField">
+          <EnergyField />
         </ErrorBoundary>
       </motion.div>
 
