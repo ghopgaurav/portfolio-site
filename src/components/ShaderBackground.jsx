@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ScreenQuad } from "@react-three/drei";
 import * as THREE from "three";
@@ -46,8 +46,10 @@ const fragment = /* glsl */ `
   }
 
   float fbm(vec2 p){
+    // 3 octaves is plenty for a soft, out-of-focus background — much cheaper
+    // per pixel than 5, which matters a lot on integrated GPUs.
     float v = 0.0, a = 0.5;
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < 3; i++){
       v += a * snoise(p);
       p *= 2.0; a *= 0.5;
     }
@@ -131,13 +133,20 @@ function Plane() {
 }
 
 export default function ShaderBackground() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const onVis = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   return (
     <div className="shader-layer">
       <Canvas
         gl={{ antialias: false, powerPreference: "low-power" }}
-        dpr={[1, 1.75]}
+        dpr={[1, 1.25]}
         camera={{ position: [0, 0, 1] }}
-        frameloop="always"
+        frameloop={visible ? "always" : "never"}
       >
         <Plane />
       </Canvas>

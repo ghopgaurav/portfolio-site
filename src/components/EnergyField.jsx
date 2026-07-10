@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSound } from "./SoundProvider.jsx";
@@ -6,11 +6,24 @@ import { setEnergyLevel, spark } from "../lib/audio.js";
 import { energyParams } from "../lib/energyStore.js";
 import { proximity } from "../lib/proximityStore.js";
 
-const COUNT = 6000;
-const FLARES = 800;
 // critically-damped follow (zeta = 1, no overshoot) -> smooth, slow, "expensive"
 const STIFF = 6.5; // low stiffness = long, cinematic settle
 const CRIT = 2 * Math.sqrt(STIFF); // critical damping coefficient
+
+/**
+ * Scale the particle load + render resolution to the machine so weaker GPUs
+ * (and Firefox/Safari, which are slower here) stay smooth. The visual is the
+ * same shape everywhere — just denser on capable hardware.
+ */
+function perfTier() {
+  if (typeof navigator === "undefined") return { grains: 4200, flares: 480, dpr: 1.5 };
+  const mem = navigator.deviceMemory || 4;
+  const cores = navigator.hardwareConcurrency || 4;
+  const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
+  if (mobile || mem <= 2 || cores <= 2) return { grains: 2200, flares: 260, dpr: 1.25 };
+  if (mem <= 4 || cores <= 4) return { grains: 3600, flares: 420, dpr: 1.5 };
+  return { grains: 5200, flares: 620, dpr: 1.75 };
+}
 
 /* ----- glowing energy grains (additive, crisp core) ----- */
 const pointVert = /* glsl */ `
@@ -110,7 +123,7 @@ const haloFrag = /* glsl */ `
   }
 `;
 
-function buildField(vw, vh) {
+function buildField(vw, vh, COUNT) {
   const R = Math.min(vw || 4, vh || 4) * 0.42;
   const positions = new Float32Array(COUNT * 3);
   const base = new Float32Array(COUNT * 3);
@@ -143,7 +156,7 @@ function buildField(vw, vh) {
   return { geometry, positions, base, vel, core, seed, exc, N: COUNT, R };
 }
 
-function buildFlares() {
+function buildFlares(FLARES) {
   const positions = new Float32Array(FLARES * 3);
   const alpha = new Float32Array(FLARES);
   const size = new Float32Array(FLARES);
@@ -158,7 +171,7 @@ function buildFlares() {
   return { geometry, positions, alpha, size, vel, life, max, N: FLARES };
 }
 
-function Core({ reduced }) {
+function Core({ reduced, tier }) {
   const { viewport } = useThree();
   const { on } = useSound();
   const pointer = useRef({ x: 0, y: 0, px: 0, py: 0, active: false });
@@ -169,27 +182,27 @@ function Core({ reduced }) {
   const pointMat = useRef();
   const haloMat = useRef();
   const haloMesh = useRef();
+  const coreGroup = useRef();
 
   const dimsKey = Math.round(viewport.width * 4) + "x" + Math.round(viewport.height * 4);
   const field = useMemo(
-    () => buildField(viewport.width || 4, viewport.height || 4),
-    [dimsKey]
+    () => buildField(viewport.width || 4, viewport.height || 4, tier.grains),
+    [dimsKey, tier.grains]
   );
-  const flares = useMemo(() => buildFlares(), []);
+  const flares = useMemo(() => buildFlares(tier.flares), [tier.flares]);
   useEffect(() => () => field.geometry.dispose(), [field]);
   useEffect(() => () => flares.geometry.dispose(), [flares]);
 
+  const px = Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, tier.dpr);
   const pointUniforms = useMemo(
     () => ({
       uSize: { value: 22.0 },
-      uPixelRatio: {
-        value: Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2),
-      },
+      uPixelRatio: { value: px },
       uGlow: { value: 0.12 },
       uColorCore: { value: new THREE.Color("#fff5db") },
       uColorEdge: { value: new THREE.Color("#ff9a22") },
     }),
-    []
+    [px]
   );
   const haloUniforms = useMemo(
     () => ({ uGlow: { value: 0.12 }, uColor: { value: new THREE.Color("#ffa23a") } }),
@@ -198,13 +211,11 @@ function Core({ reduced }) {
   const flareUniforms = useMemo(
     () => ({
       uSize: { value: 34.0 },
-      uPixelRatio: {
-        value: Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2),
-      },
+      uPixelRatio: { value: px },
       uHot: { value: new THREE.Color("#fff6e2") },
       uAmber: { value: new THREE.Color("#ff7d16") },
     }),
-    []
+    [px]
   );
 
   useFrame((state, rawDt) => {
@@ -318,6 +329,19 @@ function Core({ reduced }) {
       haloMesh.current.scale.set(s, s, 1);
     }
 
+    // --- subtle 3D parallax: the core tilts toward the pointer as you enter, so
+    // perspective reveals the particles' depth (near grains grow + brighten). One
+    // group rotation per frame — no per-particle cost, cheap on every device. ---
+    if (coreGroup.current) {
+      const g = coreGroup.current;
+      const lean = p.active ? 0.16 * (0.35 + 0.65 * prox) : 0;
+      const tx3 = reduced ? 0 : -(p.y / field.R) * lean;
+      const ty3 = reduced ? 0 : (p.x / field.R) * lean;
+      const k = Math.min(1, dt * 3);
+      g.rotation.x += (tx3 - g.rotation.x) * k;
+      g.rotation.y += (ty3 - g.rotation.y) * k;
+    }
+
     // --- reaction sparks: born bright at the collision, wander/bounce, fade, die ---
     // A living "sum": ambient motes off the core + bright motes from the pointer reaction.
     const fl = flares;
@@ -391,13 +415,16 @@ function Core({ reduced }) {
 
     if (on) {
       setEnergyLevel(0.1 + energy.current);
-      if (prox > 0.05 && Math.random() < prox * 0.4) spark(0.15 + prox * 0.6);
+      if (prox > 0.08 && Math.random() < prox * 0.22) spark(0.15 + prox * 0.6);
     }
   });
 
   const onMove = (e) => {
-    pointer.current.x = e.point.x;
-    pointer.current.y = e.point.y;
+    // convert the world hit point into the (tilted) core's local frame so the
+    // reaction stays perfectly aligned with the cursor even while it leans
+    const lp = e.object.worldToLocal(e.point.clone());
+    pointer.current.x = lp.x;
+    pointer.current.y = lp.y;
     pointer.current.active = true;
   };
   const onLeave = () => {
@@ -405,7 +432,7 @@ function Core({ reduced }) {
   };
 
   return (
-    <group>
+    <group ref={coreGroup}>
       <mesh ref={haloMesh} position={[0, 0, -0.3]}>
         <planeGeometry args={[1, 1]} />
         <shaderMaterial
@@ -455,15 +482,39 @@ export default function EnergyField() {
     typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tier = useMemo(() => perfTier(), []);
+  const wrapRef = useRef(null);
+  // stop rendering entirely once the hero scrolls away or the tab is hidden —
+  // no point burning a GPU context + physics loop for something nobody sees.
+  const [inView, setInView] = useState(true);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    let io;
+    if (el && typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), {
+        rootMargin: "160px",
+      });
+      io.observe(el);
+    }
+    const onVis = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      if (io) io.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   return (
-    <div className="hero-orb" aria-hidden="true">
+    <div className="hero-orb" aria-hidden="true" ref={wrapRef}>
       <Canvas
-        gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
-        dpr={[1, 2]}
+        gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
+        dpr={[1, tier.dpr]}
         camera={{ position: [0, 0, 6], fov: 45 }}
+        frameloop={inView && visible ? "always" : "never"}
       >
-        <Core reduced={reduced} />
+        <Core reduced={reduced} tier={tier} />
       </Canvas>
     </div>
   );

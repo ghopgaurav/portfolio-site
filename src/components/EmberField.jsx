@@ -6,7 +6,23 @@ import { useEffect, useRef } from "react";
  * disperse with simple physics — buoyancy, drag, turbulence — then fade, so the
  * section's glow feels like it naturally scatters into the dark background.
  */
-const MAX = 420;
+const MAX = 300;
+
+/** Pre-rendered radial glow sprite so we never allocate gradients in the loop. */
+function makeSprite(rgb) {
+  const S = 64;
+  const c = document.createElement("canvas");
+  c.width = S;
+  c.height = S;
+  const g = c.getContext("2d");
+  const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  grd.addColorStop(0, `rgba(${rgb},1)`);
+  grd.addColorStop(0.4, `rgba(${rgb},0.4)`);
+  grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd;
+  g.fillRect(0, 0, S, S);
+  return c;
+}
 
 export default function EmberField() {
   const canvasRef = useRef(null);
@@ -18,6 +34,8 @@ export default function EmberField() {
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+    const spriteAmber = makeSprite("255,150,52");
+    const spriteHot = makeSprite("255,190,92");
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let w = 0;
     let h = 0;
@@ -109,17 +127,11 @@ export default function EmberField() {
 
         const alpha = Math.sin(age * Math.PI) * 0.9; // fade in + out
         const r = p.size * (1 + age * 1.6);
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 4);
-        const hot = p.warm > 0.6;
-        const c = hot ? "255,190,92" : "255,150,52";
-        g.addColorStop(0, `rgba(${c},${alpha})`);
-        g.addColorStop(0.4, `rgba(${c},${alpha * 0.4})`);
-        g.addColorStop(1, "rgba(255,150,52,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r * 4, 0, Math.PI * 2);
-        ctx.fill();
+        const d = r * 8; // sprite draw size (sprite already has soft falloff)
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(p.warm > 0.6 ? spriteHot : spriteAmber, p.x - d / 2, p.y - d / 2, d, d);
       }
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
       raf = requestAnimationFrame(tick);
     };

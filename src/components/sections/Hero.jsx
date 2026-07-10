@@ -1,9 +1,10 @@
-import { useRef } from "react";
+import { useRef, lazy, Suspense } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Magnetic from "../Magnetic.jsx";
 import ErrorBoundary from "../ErrorBoundary.jsx";
-import EnergyField from "../EnergyField.jsx";
 import { profile } from "../../data/content.js";
+
+const EnergyField = lazy(() => import("../EnergyField.jsx"));
 
 const clients = ["Lockheed Martin", "US Navy", "Tiny Archives", "Duende"];
 const focus = ["Distributed Systems", "Applied AI", "Event-Driven Backends", "Agents & MCP"];
@@ -29,7 +30,9 @@ export default function Hero({ start }) {
       {/* Interactive energy core — a glowing backdrop behind the content */}
       <motion.div className="hero__sand" style={{ y: yGfx, opacity: fadeOut }}>
         <ErrorBoundary name="EnergyField">
-          <EnergyField />
+          <Suspense fallback={null}>
+            <EnergyField />
+          </Suspense>
         </ErrorBoundary>
       </motion.div>
 
@@ -78,9 +81,6 @@ export default function Hero({ start }) {
             </>
           )}
         </h1>
-        <motion.p className="hero__subline" {...fade(0.58)}>
-          {profile.subline}
-        </motion.p>
       </motion.div>
 
       <motion.div className="hero__main" style={{ opacity: fadeOut }}>

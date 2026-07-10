@@ -164,7 +164,7 @@ function whoosh(vel = 0.5) {
 export function spark(intensity = 0.4) {
   if (!enabled || !ctx || !noiseBuf) return;
   const t = ctx.currentTime;
-  if (t - lastSpark < 0.05) return;
+  if (t - lastSpark < 0.085) return;
   lastSpark = t;
   try {
     const v = Math.max(0.08, Math.min(1, intensity));

@@ -28,6 +28,7 @@ export default function ReactionController() {
     const mouse = { x: -9999, y: -9999 };
     let val = 0;
     let seed = 1;
+    let lastTurb = 0;
     let raf = 0;
     let crashing = false;
 
@@ -82,13 +83,18 @@ export default function ReactionController() {
         }
         const e = val * val; // ease the visual so it stays calm until you're close
 
-        // organic warp + boiling turbulence
+        // organic warp — displacement scale is cheap (no turbulence recompute)
         if (disp.current) disp.current.setAttribute("scale", (e * 78).toFixed(2));
+        // feTurbulence recomputes the whole noise field on *any* attribute change,
+        // which is brutal on Firefox/Safari. Keep its frequency fixed and only
+        // re-seed the "boil" ~11x/sec instead of 60 — visually near-identical.
         if (turb.current) {
-          const bf = 0.006 + e * 0.014;
-          turb.current.setAttribute("baseFrequency", bf.toFixed(4));
-          seed += 0.6 * e;
-          turb.current.setAttribute("seed", (1 + Math.floor(seed)).toString());
+          const now = performance.now();
+          if (now - lastTurb > 90) {
+            lastTurb = now;
+            seed += 1;
+            turb.current.setAttribute("seed", (1 + (seed % 60)).toString());
+          }
         }
         // chromatic tearing
         const ab = e * 14;
@@ -141,17 +147,17 @@ export default function ReactionController() {
       <defs>
         <filter
           id="reactor-corrupt"
-          x="-25%"
-          y="-25%"
-          width="150%"
-          height="150%"
+          x="-15%"
+          y="-15%"
+          width="130%"
+          height="130%"
           colorInterpolationFilters="sRGB"
         >
           <feTurbulence
             ref={turb}
             type="fractalNoise"
-            baseFrequency="0.006"
-            numOctaves="2"
+            baseFrequency="0.009"
+            numOctaves="1"
             seed="1"
             result="noise"
           />

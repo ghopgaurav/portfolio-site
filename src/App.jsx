@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
 
 import Cursor from "./components/Cursor.jsx";
 import SmoothScroll from "./components/SmoothScroll.jsx";
-import ShaderBackground from "./components/ShaderBackground.jsx";
+// three.js is heavy — load the WebGL background lazily so first paint isn't
+// blocked on it (it streams in behind the intro loader).
+const ShaderBackground = lazy(() => import("./components/ShaderBackground.jsx"));
 import EmberField from "./components/EmberField.jsx";
 import EnergyControls from "./components/EnergyControls.jsx";
 import ReactionController from "./components/ReactionController.jsx";
@@ -36,7 +38,9 @@ export default function App() {
       </ErrorBoundary>
 
       <ErrorBoundary name="ShaderBackground">
-        <ShaderBackground />
+        <Suspense fallback={null}>
+          <ShaderBackground />
+        </Suspense>
       </ErrorBoundary>
 
       <ErrorBoundary name="EmberField">
