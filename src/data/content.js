@@ -9,7 +9,7 @@ export const profile = {
   linkedin: "https://www.linkedin.com/in/gauravghop",
   available: "Open to SWE / AI roles across the US",
   intro:
-    "I'm Gaurav, a software engineer in New York. I build backends, and the AI that runs on top of them, for teams that need things to just work. Take a look at what I've built.",
+    "I'm Gaurav, a software engineer building backend systems, AI applications, and the tooling that makes them reliable.",
 };
 
 export const stats = [
