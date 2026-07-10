@@ -326,11 +326,16 @@ img { display: block; max-width: 100%; }
   justify-content: space-between;
   gap: clamp(40px, 7vh, 80px);
   min-height: 0;
-  will-change: transform, filter;
+  will-change: transform;
 }
 
-/* hidden SVG filter defs for the crash distortion */
-.reactor-defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+/* Chromatic "RGB split" during the crash — done with text-shadow so it rides
+   the text rasteriser instead of forcing an expensive layer filter pass. */
+.is-crashing .hero__distort {
+  text-shadow:
+    calc(var(--crash-ab, 0) * 1px) 0 rgba(255, 45, 85, 0.55),
+    calc(var(--crash-ab, 0) * -1px) 0 rgba(45, 190, 255, 0.55);
+}
 
 .hero__main { display: block; }
 .hero__text { min-width: 0; max-width: 600px; }
