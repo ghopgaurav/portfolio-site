@@ -26,6 +26,13 @@ export default function Hero({ start }) {
 
   return (
     <header className="hero" id="top" ref={ref}>
+      {/* Interactive sand — a soft matte backdrop behind the content */}
+      <motion.div className="hero__sand" style={{ y: yGfx, opacity: fadeOut }}>
+        <ErrorBoundary name="SandField">
+          <SandField />
+        </ErrorBoundary>
+      </motion.div>
+
       <motion.div className="hero__head" style={{ y: yText, opacity: fadeOut }}>
         <motion.div className="hero__eyebrow" {...fade(0.05)}>
           <span className="hero__role mono">{profile.role}</span>
@@ -89,19 +96,6 @@ export default function Hero({ start }) {
             </a>
           </motion.div>
         </div>
-
-        {/* Interactive WebGL element — isolated so it can never crash the page */}
-        <motion.div
-          className="hero__orb-wrap"
-          style={{ y: yGfx }}
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: start ? 1 : 0, scale: start ? 1 : 0.96 }}
-          transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <ErrorBoundary name="SandField">
-            <SandField />
-          </ErrorBoundary>
-        </motion.div>
       </motion.div>
 
       {/* Clients + focus strip */}
