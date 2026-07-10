@@ -4,10 +4,10 @@
  * frame (no React re-render needed, so it stays smooth).
  */
 export const ENERGY_DEFAULTS = {
-  rotation: 0.14, // idle rotation speed of the core
-  flow: 0.55, // organic turbulence / drift
-  reactivity: 1.0, // how strongly the pointer disturbs it
-  glow: 1.0, // emission intensity multiplier
+  rotation: 0.432, // 72% — idle rotation speed of the core
+  flow: 0.375, // 25% — organic turbulence / drift
+  reactivity: 0.308, // 14% — how strongly the pointer disturbs it
+  glow: 1.436, // 74% — emission intensity multiplier
 };
 
 export const energyParams = { ...ENERGY_DEFAULTS };

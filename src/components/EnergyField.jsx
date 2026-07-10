@@ -18,15 +18,18 @@ const pointVert = /* glsl */ `
   uniform float uGlow;
   attribute vec3 aBase;
   attribute float aCore;
+  attribute float aExcite;
   varying float vI;
+  varying float vE;
   void main() {
     vec3 p = position;
     float disp = length(p - aBase);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     float core = 1.0 - aCore;
-    float size = uSize * (0.4 + core * 1.15) * (1.0 + disp * 2.0 + uGlow * 0.5);
-    gl_PointSize = clamp(size * uPixelRatio * (1.0 / -mv.z), 1.0, 26.0);
-    vI = core * 0.55 + disp * 2.4 + uGlow * 0.5;
+    float size = uSize * (0.4 + core * 1.15) * (1.0 + disp * 2.0 + uGlow * 0.5 + aExcite * 2.6);
+    gl_PointSize = clamp(size * uPixelRatio * (1.0 / -mv.z), 1.0, 30.0);
+    vI = core * 0.55 + disp * 2.4 + uGlow * 0.5 + aExcite * 1.6;
+    vE = aExcite;
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -35,15 +38,19 @@ const pointFrag = /* glsl */ `
   uniform vec3 uColorCore;
   uniform vec3 uColorEdge;
   varying float vI;
+  varying float vE;
   void main() {
     vec2 c = gl_PointCoord - 0.5;
     float d = length(c);
     if (d > 0.5) discard;
     float core = smoothstep(0.5, 0.055, d);
     float halo = smoothstep(0.5, 0.0, d);
-    float i = clamp(vI, 0.0, 1.4);
+    float i = clamp(vI, 0.0, 1.6);
     vec3 col = mix(uColorEdge, uColorCore, clamp(i, 0.0, 1.0));
-    float a = (core * 0.9 + halo * 0.32) * clamp(i, 0.05, 1.2) * 0.55;
+    // collision flash — excited grains bloom to white-hot then die out
+    col = mix(col, vec3(1.0, 0.97, 0.9), clamp(vE, 0.0, 1.0));
+    float a = (core * 0.9 + halo * 0.32) * clamp(i, 0.05, 1.4) * 0.55;
+    a += vE * core * 0.55;
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -107,6 +114,7 @@ function buildField(vw, vh) {
   const vel = new Float32Array(COUNT * 3);
   const core = new Float32Array(COUNT);
   const seed = new Float32Array(COUNT);
+  const exc = new Float32Array(COUNT);
   const span = R * 1.25;
   for (let i = 0; i < COUNT; i++) {
     const rr = Math.pow(Math.random(), 0.6);
@@ -128,7 +136,8 @@ function buildField(vw, vh) {
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("aBase", new THREE.BufferAttribute(base, 3));
   geometry.setAttribute("aCore", new THREE.BufferAttribute(core, 1));
-  return { geometry, positions, base, vel, core, seed, N: COUNT, R };
+  geometry.setAttribute("aExcite", new THREE.BufferAttribute(exc, 1));
+  return { geometry, positions, base, vel, core, seed, exc, N: COUNT, R };
 }
 
 function buildFlares() {
@@ -149,7 +158,7 @@ function buildFlares() {
 function Core({ reduced }) {
   const { viewport } = useThree();
   const { on } = useSound();
-  const pointer = useRef({ x: 0, y: 0, active: false });
+  const pointer = useRef({ x: 0, y: 0, px: 0, py: 0, active: false });
   const energy = useRef(0.0);
   const theta = useRef(0.0);
   const emitCarry = useRef(0);
@@ -174,8 +183,8 @@ function Core({ reduced }) {
         value: Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2),
       },
       uGlow: { value: 0.12 },
-      uColorCore: { value: new THREE.Color("#fff3d6") },
-      uColorEdge: { value: new THREE.Color("#ff8c1f") },
+      uColorCore: { value: new THREE.Color("#fff5db") },
+      uColorEdge: { value: new THREE.Color("#ff9a22") },
     }),
     []
   );
@@ -196,7 +205,7 @@ function Core({ reduced }) {
   );
 
   useFrame((state, rawDt) => {
-    const { positions, base, vel, seed, N } = field;
+    const { positions, base, vel, seed, exc, N } = field;
     const p = pointer.current;
     const t = state.clock.elapsedTime;
     const dt = Math.min(rawDt, 1 / 30);
@@ -215,8 +224,17 @@ function Core({ reduced }) {
     const infl = field.R * 0.5;
     const infl2 = infl * infl;
     const push = 0.05 * react * (0.25 + prox); // stronger the closer you are
+    const swirl = 1.7; // tangential vortex around the pointer
+    const bulge = push * 2.6; // z-projection dome (multidimensional feel)
+    const edec = Math.pow(0.86, f); // excitation flash decay
     const amp = flow * field.R * 0.05;
     const globalPulse = reduced ? 0 : Math.sin(t * 0.9) * 0.03;
+
+    // pointer speed → brighter, wider collision flashes
+    const spd = Math.hypot(p.x - p.px, p.y - p.py);
+    p.px = p.x;
+    p.py = p.y;
+    const speedN = Math.min(1, spd / (field.R * 0.14));
     let disturb = 0;
 
     for (let i = 0; i < N; i++) {
@@ -237,16 +255,30 @@ function Core({ reduced }) {
       const ty = rby * (1 + breath) + fy;
       const tz = bz * (1 + breath);
 
+      exc[i] *= edec; // fade any previous flash
+
       if (p.active) {
         const dx = positions[ix] - p.x;
         const dy = positions[iy] - p.y;
         const d2 = dx * dx + dy * dy;
         if (d2 < infl2 && d2 > 0.00001) {
           const d = Math.sqrt(d2);
-          const force = (1 - d / infl) * push;
-          vel[ix] += (dx / d) * force * f;
-          vel[iy] += (dy / d) * force * f;
-          vel[iz] += force * 1.3 * f;
+          const nrm = 1 - d / infl; // 0 at edge .. 1 at pointer
+          const force = nrm * push;
+          const ux = dx / d;
+          const uy = dy / d;
+          // radial bulge outward
+          vel[ix] += ux * force * f;
+          vel[iy] += uy * force * f;
+          // tangential vortex swirl → orbiting, quantum-ish motion
+          const sw = nrm * push * swirl;
+          vel[ix] += -uy * sw * f;
+          vel[iy] += ux * sw * f;
+          // z-projection dome toward the camera (power-shaped)
+          vel[iz] += nrm * nrm * bulge * f;
+          // collision excitation — spike, brighter with pointer speed
+          const tgtE = nrm * (0.4 + speedN * 0.9);
+          if (tgtE > exc[i]) exc[i] = Math.min(1.2, tgtE);
         }
       }
 
@@ -264,6 +296,7 @@ function Core({ reduced }) {
       disturb += Math.abs(vel[ix]) + Math.abs(vel[iy]);
     }
     field.geometry.attributes.position.needsUpdate = true;
+    field.geometry.attributes.aExcite.needsUpdate = true;
 
     // reaction level is driven by proximity (max at the centre)
     const level = Math.min(1, (disturb / N) * 130);
