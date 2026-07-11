@@ -7,6 +7,7 @@ export const profile = {
   phone: "+1 929-628-4065",
   github: "https://github.com/ghopgaurav",
   linkedin: "https://www.linkedin.com/in/gauravghop",
+  resume: "/resume.pdf",
   available: "Open to SWE / AI roles across the US",
   intro:
     "I'm Gaurav, a software engineer building backend systems, AI applications, and the tooling that makes them reliable.",

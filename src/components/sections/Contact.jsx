@@ -1,5 +1,6 @@
 import { Reveal } from "../Reveal.jsx";
 import Magnetic from "../Magnetic.jsx";
+import ContactForm from "../ContactForm.jsx";
 import { profile } from "../../data/content.js";
 
 export default function Contact() {
@@ -26,13 +27,35 @@ export default function Contact() {
           <a href={profile.linkedin} target="_blank" rel="noopener">LinkedIn</a>
         </div>
       </Reveal>
+
       <Reveal delay={0.15}>
-        <div style={{ marginTop: "3rem" }}>
-          <Magnetic strength={0.35}>
-            <a className="btn-pill btn-pill--accent" href={`mailto:${profile.email}`} data-cursor>
-              Start a conversation →
-            </a>
-          </Magnetic>
+        <div className="contact__grid">
+          <div className="contact__form-col">
+            <h3 className="contact__form-title">Send me a message</h3>
+            <p className="contact__form-sub">
+              Drop your email and a note — it lands straight in my inbox.
+            </p>
+            <ContactForm />
+          </div>
+          <div className="contact__aside">
+            <p className="contact__aside-label mono">Prefer the details?</p>
+            <Magnetic strength={0.3}>
+              <a
+                className="btn-pill btn-pill--accent"
+                href={profile.resume}
+                download="Gaurav_Ghop_Resume.pdf"
+                data-cursor
+                data-sound
+              >
+                Download résumé ↓
+              </a>
+            </Magnetic>
+            <Magnetic strength={0.3}>
+              <a className="btn-pill" href={`mailto:${profile.email}`} data-cursor data-sound>
+                Email me directly
+              </a>
+            </Magnetic>
+          </div>
         </div>
       </Reveal>
     </section>

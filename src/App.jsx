@@ -1,7 +1,9 @@
 import { useState, lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Analytics } from "@vercel/analytics/react";
 
 import Cursor from "./components/Cursor.jsx";
+import VisitTracker from "./components/VisitTracker.jsx";
 import SmoothScroll from "./components/SmoothScroll.jsx";
 // three.js is heavy — load the WebGL background lazily so first paint isn't
 // blocked on it (it streams in behind the intro loader).
@@ -33,6 +35,13 @@ export default function App() {
 
   return (
     <SoundProvider>
+      {/* Aggregate, privacy-first pageview/geo dashboard (Vercel, free tier) */}
+      <Analytics />
+      {/* Near-realtime "who just visited" ping (server reads geo headers) */}
+      <ErrorBoundary name="VisitTracker">
+        <VisitTracker />
+      </ErrorBoundary>
+
       <ErrorBoundary name="Cursor">
         <Cursor />
       </ErrorBoundary>

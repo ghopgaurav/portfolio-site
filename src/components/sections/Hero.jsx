@@ -102,12 +102,13 @@ export default function Hero({ start }) {
             </Magnetic>
             <a
               className="hero__say-hello"
-              href={`mailto:${profile.email}`}
+              href={profile.resume}
+              download="Gaurav_Ghop_Resume.pdf"
               data-cursor
-              data-cursor-label="email"
+              data-cursor-label="résumé"
               data-sound
             >
-              Say hello <span className="arrow">↗</span>
+              Résumé <span className="arrow">↓</span>
             </a>
           </motion.div>
         </div>
