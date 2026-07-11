@@ -36,7 +36,9 @@ export default function App() {
   return (
     <SoundProvider>
       {/* Aggregate, privacy-first pageview/geo dashboard (Vercel, free tier) */}
-      <Analytics />
+      <ErrorBoundary name="Analytics">
+        <Analytics />
+      </ErrorBoundary>
       {/* Near-realtime "who just visited" ping (server reads geo headers) */}
       <ErrorBoundary name="VisitTracker">
         <VisitTracker />
