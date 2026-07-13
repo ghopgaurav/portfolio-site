@@ -727,6 +727,15 @@ img { display: block; max-width: 100%; }
   border-color: var(--energy, #ff9838);
   background: rgba(255, 255, 255, 0.04);
 }
+.cform__label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.cform__count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  transition: color 0.25s var(--ease);
+}
+.cform__count.is-ok { color: var(--energy, #ff9838); }
 .cform__honey { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .cform__actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
 .cform button[disabled] { opacity: 0.6; cursor: default; }
